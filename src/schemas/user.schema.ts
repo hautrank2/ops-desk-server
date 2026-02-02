@@ -4,9 +4,11 @@ import { HydratedDocument, Types } from 'mongoose';
 export type UserDocument = HydratedDocument<User>;
 
 export type UserRole = 'admin' | 'manager' | 'user';
+export const UserRoles = ['admin', 'manager', 'user'];
 export type UserStatus = 'active' | 'blocked';
 export enum UserRoleEnum {
   Admin = 'admin',
+  Manager = 'manager',
   User = 'user',
 }
 @Schema({ timestamps: true })
@@ -38,7 +40,7 @@ export class User {
   // 1 role đủ dùng cho MVP
   @Prop({
     required: true,
-    enum: ['admin', 'user'],
+    enum: ['admin', 'manager', 'user'],
     index: true,
   })
   role!: UserRole;

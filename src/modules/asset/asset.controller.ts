@@ -7,13 +7,13 @@ import {
   Param,
   Delete,
   UseInterceptors,
-  UploadedFile,
   UploadedFiles,
 } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CreateAssetItemDto } from './dto/create-asset-item.dto';
 
 @Controller('asset')
 export class AssetController {
@@ -46,5 +46,10 @@ export class AssetController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.assetService.remove(id);
+  }
+
+  @Post(':id/items')
+  createItems(@Param('id') id: string, @Body() dto: CreateAssetItemDto) {
+    return this.assetService.createItems(id, dto);
   }
 }

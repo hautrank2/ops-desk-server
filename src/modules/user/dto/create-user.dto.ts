@@ -8,6 +8,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { UserRole, UserRoles, UserStatus } from 'src/schemas/user.schema';
 
 export class CreateUserDto {
   @Transform(({ value }) => String(value).trim().toLowerCase())
@@ -26,8 +27,8 @@ export class CreateUserDto {
   @Transform(({ value }) => String(value).trim())
   name!: string;
 
-  @IsIn(['admin', 'user'])
-  role!: 'admin' | 'user';
+  @IsIn(UserRoles)
+  role!: UserRole;
 
   @IsOptional()
   @IsMongoId()
@@ -35,5 +36,5 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsIn(['active', 'blocked'])
-  status?: 'active' | 'blocked';
+  status?: UserStatus;
 }

@@ -1,5 +1,5 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { AssetStatus, AssetType } from 'src/schemas/asset.schema';
+import { IsEnum, IsOptional, IsString, IsUrl } from 'class-validator';
+import { AssetType } from 'src/schemas/asset.schema';
 
 export class CreateAssetDto {
   @IsString()
@@ -12,26 +12,18 @@ export class CreateAssetDto {
   type: AssetType;
 
   @IsOptional()
-  @IsEnum(AssetStatus)
-  status?: AssetStatus;
-
-  @IsOptional()
   @IsString()
-  locationId?: string;
-
-  @IsOptional()
-  @IsString()
-  ownerDeptId?: string;
-
-  @IsOptional()
-  @IsString()
-  serialNumber?: string;
+  vendor?: string;
 
   @IsOptional()
   @IsString()
   model?: string;
 
   @IsOptional()
+  @IsUrl()
+  purchaseUrl?: string;
+
+  @IsOptional()
   @IsString()
-  vendor?: string;
+  description?: string;
 }

@@ -6,29 +6,55 @@ import {
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { from, map, switchMap, throwError } from 'rxjs';
+import { concat, from, map, of, switchMap, throwError } from 'rxjs';
 import { Model } from 'mongoose';
 import { Asset } from './entities/asset.entity';
+import { UploadService } from 'src/services/upload.service';
 
 @Injectable()
 export class AssetService {
   constructor(
     @InjectModel(Asset.name)
     private readonly assetModel: Model<Asset>,
+    private readonly uploadSrv: UploadService,
   ) {}
 
-  // CREATE
-  create(createAssetDto: CreateAssetDto) {
-    return from(this.assetModel.findOne({ code: createAssetDto.code })).pipe(
-      switchMap(existed => {
-        if (existed) {
-          return throwError(
-            () => new ConflictException('Asset code already exists'),
-          );
-        }
-        return from(new this.assetModel(createAssetDto).save());
+  create(createAssetDto: CreateAssetDto, files?: Express.Multer.File[]) {
+    const upload$ = files
+      ? files.map(file => from(this.uploadSrv.uploadFile(file, ['asset'])))
+      : of([]);
+
+    return concat(upload$).pipe(
+      switchMap(imageUrls => {
+        return from(
+          this.assetModel.findOne({ code: createAssetDto.code }),
+        ).pipe(
+          switchMap(existed => {
+            if (existed) {
+              return throwError(
+                () => new ConflictException('Asset code already exists'),
+              );
+            }
+
+            return from(
+              new this.assetModel({
+                ...createAssetDto,
+                imageUrls,
+              }).save(),
+            );
+          }),
+        );
       }),
     );
+  }
+
+  private saveAsset(dto: CreateAssetDto, files?: Express.Multer.File[]) {
+    const imageUrls = files?.map(f => `/uploads/assets/${f.filename}`) ?? [];
+
+    return new this.assetModel({
+      ...dto,
+      imageUrls,
+    }).save();
   }
 
   // READ ALL

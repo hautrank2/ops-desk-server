@@ -4,13 +4,13 @@ import { Document } from 'mongoose';
 export type AssetDocument = Asset & Document;
 
 export enum AssetType {
-  Device = 'Device',
+  Device = 'Device', // camera, printer, coffee machine...
+  Furniture = 'Furniture', // desk, chair, cabinet
+  Appliance = 'Appliance', // refrigerator, microwave...
+  IT = 'IT', // server, network
   Vehicle = 'Vehicle',
   Facility = 'Facility',
-  Tool = 'Tool',
-  IT = 'IT',
 }
-
 export enum AssetStatus {
   Active = 'Active',
   Faulty = 'Faulty',
@@ -28,9 +28,6 @@ export class Asset {
 
   @Prop({ required: true, enum: AssetType })
   type: AssetType;
-
-  @Prop()
-  category?: string; // Camera, Printer, AC...
 
   @Prop({ enum: AssetStatus, default: AssetStatus.Active })
   status: AssetStatus;
@@ -50,17 +47,8 @@ export class Asset {
   @Prop()
   vendor?: string;
 
-  @Prop()
-  installedAt?: Date;
-
-  @Prop()
-  warrantyExpiredAt?: Date;
-
   @Prop({ type: [String], default: [] })
-  imageUrls?: string[];
-
-  @Prop({ type: Object })
-  metadata?: Record<string, any>;
+  imageUrls: string[];
 }
 
 export const AssetSchema = SchemaFactory.createForClass(Asset);

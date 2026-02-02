@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsArray } from 'class-validator';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { AssetStatus, AssetType } from 'src/schemas/asset.schema';
 
 export class CreateAssetDto {
@@ -10,10 +10,6 @@ export class CreateAssetDto {
 
   @IsEnum(AssetType)
   type: AssetType;
-
-  @IsOptional()
-  @IsString()
-  category?: string;
 
   @IsOptional()
   @IsEnum(AssetStatus)
@@ -38,8 +34,4 @@ export class CreateAssetDto {
   @IsOptional()
   @IsString()
   vendor?: string;
-
-  @IsOptional()
-  @IsArray()
-  imageUrls?: string[];
 }

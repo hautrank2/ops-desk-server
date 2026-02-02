@@ -6,18 +6,26 @@ import {
   Patch,
   Param,
   Delete,
+  UseInterceptors,
+  UploadedFile,
+  UploadedFiles,
 } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('asset')
 export class AssetController {
   constructor(private readonly assetService: AssetService) {}
 
   @Post()
-  create(@Body() createAssetDto: CreateAssetDto) {
-    return this.assetService.create(createAssetDto);
+  @UseInterceptors(FileInterceptor('images'))
+  create(
+    @UploadedFiles() files: Array<Express.Multer.File>,
+    @Body() createAssetDto: CreateAssetDto,
+  ) {
+    return this.assetService.create(createAssetDto, files);
   }
 
   @Get()

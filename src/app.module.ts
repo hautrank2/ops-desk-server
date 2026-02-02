@@ -6,6 +6,11 @@ import { JwtModule } from '@nestjs/jwt';
 import configuration from './config/configuration';
 import { UserModule } from './modules/user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AuthModule } from './modules/auth/auth.module';
+import { APP_GUARD } from '@nestjs/core';
+import { AppGuard } from './app.guard';
+import { AssetModule } from './modules/asset/asset.module';
+import { DepartmentModule } from './modules/department/department.module';
 
 @Module({
   imports: [
@@ -21,8 +26,17 @@ import { MongooseModule } from '@nestjs/mongoose';
     }),
     MongooseModule.forRoot(process.env.DATABASE_URL || ''),
     UserModule,
+    AuthModule,
+    AssetModule,
+    DepartmentModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: AppGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -10,6 +10,9 @@ import {
 import { Transform } from 'class-transformer';
 
 export class CreateUserDto {
+  @Transform(({ value }) => String(value).trim().toLowerCase())
+  username!: string;
+
   @IsEmail()
   @Transform(({ value }) => String(value).trim().toLowerCase())
   email!: string;

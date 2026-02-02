@@ -3,7 +3,7 @@ import { HydratedDocument, Types } from 'mongoose';
 
 export type UserDocument = HydratedDocument<User>;
 
-export type UserRole = 'admin' | 'user';
+export type UserRole = 'admin' | 'manager' | 'user';
 export type UserStatus = 'active' | 'blocked';
 export enum UserRoleEnum {
   Admin = 'admin',
@@ -11,6 +11,15 @@ export enum UserRoleEnum {
 }
 @Schema({ timestamps: true })
 export class User {
+  @Prop({
+    required: true,
+    trim: true,
+    lowercase: true,
+    unique: true,
+    index: true,
+  })
+  username!: string;
+
   @Prop({
     required: true,
     trim: true,

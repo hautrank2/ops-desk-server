@@ -6,23 +6,21 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { AdminGuard } from 'src/guards/admin.guard';
 
 @Controller('user')
+@UseGuards(AdminGuard)
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post()
   create(@Body() createUserDto: CreateUserDto) {
-    const saltOrRounds = 10;
-    // createUserDto.password = await bcrypt.hash(
-    //   createUserDto.password,
-    //   saltOrRounds,
-    // );
-    return this.userService.findAll();
+    return this.userService.create(createUserDto);
   }
 
   @Get()

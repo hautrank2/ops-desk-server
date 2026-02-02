@@ -1,0 +1,74 @@
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+
+export type TicketDocument = Ticket & Document;
+
+export enum TicketType {
+  Repair = 'Repair',
+  Maintenance = 'Maintenance',
+  Request = 'Request',
+  Incident = 'Incident',
+}
+
+export enum TicketPriority {
+  Low = 'Low',
+  Medium = 'Medium',
+  High = 'High',
+  Urgent = 'Urgent',
+}
+
+export enum TicketStatus {
+  New = 'New',
+  Assigned = 'Assigned',
+  Doing = 'Doing',
+  Waiting = 'Waiting',
+  Done = 'Done',
+  Cancelled = 'Cancelled',
+}
+
+@Schema({ timestamps: true })
+export class Ticket {
+  @Prop({ required: true, unique: true })
+  code: string; // OPS-000456
+
+  @Prop({ required: true })
+  title: string;
+
+  @Prop()
+  description?: string;
+
+  @Prop({ required: true, enum: TicketType })
+  type: TicketType;
+
+  @Prop({ enum: TicketPriority, default: TicketPriority.Medium })
+  priority: TicketPriority;
+
+  @Prop({ enum: TicketStatus, default: TicketStatus.New })
+  status: TicketStatus;
+
+  @Prop()
+  assetId?: string;
+
+  @Prop()
+  locationId?: string;
+
+  @Prop({ required: true })
+  requesterId: string;
+
+  @Prop()
+  assigneeId?: string;
+
+  @Prop()
+  teamId?: string;
+
+  @Prop({ type: [String], default: [] })
+  images?: string[];
+
+  @Prop()
+  dueAt?: Date;
+
+  @Prop()
+  closedAt?: Date;
+}
+
+export const TicketSchema = SchemaFactory.createForClass(Ticket);

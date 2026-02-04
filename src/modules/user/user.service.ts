@@ -16,9 +16,9 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from 'src/schemas/user.schema';
 import { Model } from 'mongoose';
-import * as bcrypt from 'bcrypt';
 import { UserQueryModel } from './dto/user.dto';
 import { escapeRegex } from 'src/utils/query';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UserService {
@@ -60,32 +60,40 @@ export class UserService {
         });
 
         return from(created.save()).pipe(
-          catchError((err: any) => {
-            if (err?.code === 11000) {
-              const dupField = Object.keys(
-                err.keyPattern ?? err.keyValue ?? {},
-              )[0];
-              if (dupField === 'email') {
+          catchError(
+            (err: {
+              code?: number;
+              keyPattern?: string;
+              keyValue?: string;
+            }) => {
+              if (err?.code === 11000) {
+                const dupField = Object.keys(
+                  err.keyPattern ?? err.keyValue ?? {},
+                )[0];
+                if (dupField === 'email') {
+                  return throwError(
+                    () => new ConflictException('Email already exists'),
+                  );
+                }
+                if (dupField === 'username') {
+                  return throwError(
+                    () => new ConflictException('Username already exists'),
+                  );
+                }
                 return throwError(
-                  () => new ConflictException('Email already exists'),
+                  () => new ConflictException('Duplicate value'),
                 );
               }
-              if (dupField === 'username') {
-                return throwError(
-                  () => new ConflictException('Username already exists'),
-                );
-              }
-              return throwError(() => new ConflictException('Duplicate value'));
-            }
-            return throwError(() => err);
-          }),
+              return throwError(() => err);
+            },
+          ),
         );
       }),
     );
   }
 
   findAll(filter?: UserQueryModel) {
-    const q: any = {};
+    const q: Record<string, any> = {};
 
     if (filter?.email?.trim()) {
       q.email = { $regex: escapeRegex(filter.email.trim()), $options: 'i' };
@@ -118,8 +126,8 @@ export class UserService {
   findOneByFilter(
     filter?: UserQueryModel,
     opts?: { includePasswordHash?: boolean },
-  ) {
-    const q: any = {};
+  ): Observable<User | null> {
+    const q: Record<string, any> = {};
 
     if (filter?.email?.trim()) {
       q.email = { $regex: escapeRegex(filter.email.trim()), $options: 'i' };

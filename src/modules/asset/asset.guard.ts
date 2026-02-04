@@ -18,31 +18,7 @@ export class AssetGuard implements CanActivate {
     context: ExecutionContext,
   ): boolean | Promise<boolean> | Observable<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    const upsertMethods = UPSERT_REQUEST_METHODS;
-    const accessRoles = [UserRoleEnum.Admin, UserRoleEnum.Manager];
-    if (!upsertMethods.includes(request.method)) return true;
-
-    const authHeader = request.headers['authorization'];
-    if (!authHeader)
-      throw new UnauthorizedException('Missing Authorization header');
-
-    const [type, token] = authHeader.split(' ');
-    if (type !== 'Bearer' || !token) {
-      throw new UnauthorizedException('Invalid Authorization header');
-    }
-
-    let payload: any;
-    try {
-      payload = this.jwtService.verify(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-
-    if (accessRoles.includes(payload?.role)) {
-      throw new ForbiddenException('Admin and manager only');
-    }
-
-    (request as any).user = payload;
+    console.log(request.user);
 
     return true;
   }

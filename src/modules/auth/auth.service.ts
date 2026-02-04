@@ -5,12 +5,12 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { from, mergeMap, Observable, switchMap, throwError } from 'rxjs';
+import { from, map, switchMap, throwError } from 'rxjs';
 import { UserService } from 'src/modules/user/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { User } from 'src/schemas/user.schema';
-import { prettyObject } from 'src/types/common';
 import * as bcrypt from 'bcrypt';
+import { JwtPayload } from 'src/types/auth';
 
 @Injectable()
 export class AuthService {
@@ -19,46 +19,43 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
-  signin(dto: SigninDto): Observable<{ token: string; user: User }> {
+  signin(dto: SigninDto) {
     const { password, username } = dto;
 
-    return from(
-      this.userService.findOneByFilter(
-        { username },
-        { includePasswordHash: true },
-      ),
-    ).pipe(
-      switchMap((user: any) => {
-        if (!user) {
-          return throwError(() => new NotFoundException('User not found'));
-        }
+    return this.userService
+      .findOneByFilter({ username }, { includePasswordHash: true })
+      .pipe(
+        switchMap((user: User | null) => {
+          if (!user) {
+            return throwError(() => new NotFoundException('User not found'));
+          }
 
-        if (user.status === 'blocked') {
-          return throwError(() => new ForbiddenException('User is blocked'));
-        }
+          if (user.status === 'blocked') {
+            return throwError(() => new ForbiddenException('User is blocked'));
+          }
 
-        // bcrypt.compare returns Promise<boolean>
-        return from(bcrypt.compare(password, user.passwordHash)).pipe(
-          switchMap(ok => {
-            if (!ok) {
-              return throwError(
-                () => new UnauthorizedException('Invalid credentials'),
-              );
-            }
+          return from(bcrypt.compare(password, user.passwordHash)).pipe(
+            map((ok: boolean) => {
+              if (!ok) {
+                return throwError(
+                  () => new UnauthorizedException('Invalid credentials'),
+                );
+              }
 
-            const payload = {
-              sub: user._id?.toString?.() ?? user._id,
-              username: user.username,
-              role: user.role,
-            };
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const userData = {
+                username: user.username,
+                role: user.role,
+              };
+              const token = this.jwtService.sign({
+                username: user.username,
+                role: user.role,
+              });
 
-            const token = this.jwtService.sign(payload);
-            const { passwordHash, ...safeUser } = user;
-
-            return from([{ token, user: safeUser as User }]);
-          }),
-        );
-      }),
-    );
+              return { ...userData, token } satisfies JwtPayload;
+            }),
+          );
+        }),
+      );
   }
 }

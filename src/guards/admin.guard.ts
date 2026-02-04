@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Observable } from 'rxjs';
-import { UserRoleEnum } from 'src/schemas/user.schema';
+import { JwtPayload } from 'src/types/auth';
 
 @Injectable()
 export class AdminGuard implements CanActivate {
@@ -22,7 +22,7 @@ export class AdminGuard implements CanActivate {
     if (!upsertMethods.includes(request.method)) return true;
 
     const authHeader = request.headers['authorization'];
-    if (!authHeader)
+    if (!authHeader || typeof authHeader !== 'string')
       throw new UnauthorizedException('Missing Authorization header');
 
     const [type, token] = authHeader.split(' ');
@@ -30,18 +30,16 @@ export class AdminGuard implements CanActivate {
       throw new UnauthorizedException('Invalid Authorization header');
     }
 
-    let payload: any;
-    try {
-      payload = this.jwtService.verify(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+    const payload = request.payload;
+
+    if (!payload) {
+      new UnauthorizedException('Invalid or expired token');
+      return false;
     }
 
-    if (payload?.role !== UserRoleEnum.Admin) {
+    if (payload.role !== 'admin') {
       throw new ForbiddenException('Admin only');
     }
-
-    (request as any).user = payload;
 
     return true;
   }

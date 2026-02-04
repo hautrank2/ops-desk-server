@@ -6,6 +6,11 @@ export type UserDocument = HydratedDocument<User>;
 export type UserRole = 'admin' | 'manager' | 'user';
 export const UserRoles = ['admin', 'manager', 'user'];
 export type UserStatus = 'active' | 'blocked';
+export enum UserStatusEnum {
+  Active = 'active',
+  Blocked = 'blocked',
+}
+
 export enum UserRoleEnum {
   Admin = 'admin',
   Manager = 'manager',

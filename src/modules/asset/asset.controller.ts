@@ -8,6 +8,7 @@ import {
   Delete,
   UseInterceptors,
   UploadedFiles,
+  UseGuards,
 } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { CreateAssetDto, CreateAssetFormDataDto } from './dto/create-asset.dto';
@@ -15,8 +16,10 @@ import { UpdateAssetDto } from './dto/update-asset.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { CreateAssetItemDto } from './dto/create-asset-item.dto';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
+import { AssetGuard } from './asset.guard';
 
 @Controller('asset')
+@UseGuards(AssetGuard)
 export class AssetController {
   constructor(private readonly assetService: AssetService) {}
 

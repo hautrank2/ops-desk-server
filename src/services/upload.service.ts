@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class UploadService {
+  readonly prefixFolder = ['ops-desk'];
   constructor(private configService: ConfigService) {
     cloudinary.config({
       cloud_name: configService.get<string>('cloudinary.name'),
@@ -25,7 +26,7 @@ export class UploadService {
           public_id: fileName
             ? `${fileName}-${Date.now()}`
             : Date.now().toString(),
-          folder: folder.join('/'),
+          folder: this.prefixFolder.concat(...folder).join('/'),
         },
       ),
     ).pipe(

@@ -6,7 +6,16 @@ import {
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { concat, from, map, Observable, of, switchMap, throwError } from 'rxjs';
+import {
+  concat,
+  forkJoin,
+  from,
+  map,
+  Observable,
+  of,
+  switchMap,
+  throwError,
+} from 'rxjs';
 import { UploadService } from 'src/services/upload.service';
 import { CreateAssetItemDto } from './dto/create-asset-item.dto';
 import { Asset } from 'src/schemas/asset.schema';
@@ -26,21 +35,19 @@ export class AssetService {
 
   create(createAssetDto: CreateAssetDto, files?: Express.Multer.File[]) {
     const upload$ = files
-      ? files.map(file => from(this.uploadSrv.uploadFile(file, ['asset'])))
+      ? forkJoin(files.map(file => this.uploadSrv.uploadFile(file, ['asset'])))
       : of([]);
 
-    return concat(upload$).pipe(
-      switchMap(imageUrls => {
-        return from(
-          this.assetModel.findOne({ code: createAssetDto.code }),
-        ).pipe(
-          switchMap(existed => {
-            if (existed) {
-              return throwError(
-                () => new ConflictException('Asset code already exists'),
-              );
-            }
-
+    return from(this.assetModel.findOne({ code: createAssetDto.code })).pipe(
+      switchMap(existed => {
+        if (existed) {
+          return throwError(
+            () => new ConflictException('Asset code already exists'),
+          );
+        }
+        return upload$.pipe(
+          switchMap(imageUrls => {
+            console.log(imageUrls);
             return from(
               new this.assetModel({
                 ...createAssetDto,
@@ -101,11 +108,7 @@ export class AssetService {
   // DELETE (soft delete → Retired)
   remove(id: string) {
     return from(
-      this.assetModel.findByIdAndUpdate(
-        id,
-        { status: 'Retired' },
-        { new: true },
-      ),
+      this.assetModel.findByIdAndUpdate(id, { active: false }, { new: true }),
     ).pipe(
       map(asset => {
         if (!asset) {

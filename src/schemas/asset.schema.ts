@@ -33,6 +33,9 @@ export class Asset {
 
   @Prop({ type: [String], default: [] })
   imageUrls: string[];
+
+  @Prop({ type: Boolean, default: true })
+  active: boolean;
 }
 
 export const AssetSchema = SchemaFactory.createForClass(Asset);

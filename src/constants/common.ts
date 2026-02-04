@@ -1,0 +1,1 @@
+export const UPSERT_REQUEST_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE'];

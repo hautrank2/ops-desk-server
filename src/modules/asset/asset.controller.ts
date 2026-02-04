@@ -10,21 +10,28 @@ import {
   UploadedFiles,
 } from '@nestjs/common';
 import { AssetService } from './asset.service';
-import { CreateAssetDto } from './dto/create-asset.dto';
+import { CreateAssetDto, CreateAssetFormDataDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { CreateAssetItemDto } from './dto/create-asset-item.dto';
+import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 
 @Controller('asset')
 export class AssetController {
   constructor(private readonly assetService: AssetService) {}
 
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Asset data',
+    type: CreateAssetFormDataDto,
+  })
+  @UseInterceptors(FilesInterceptor('images', 2))
   @Post()
-  @UseInterceptors(FileInterceptor('images'))
   create(
-    @UploadedFiles() files: Array<Express.Multer.File>,
+    @UploadedFiles() files: Express.Multer.File[],
     @Body() createAssetDto: CreateAssetDto,
   ) {
+    console.log('files', files, createAssetDto);
     return this.assetService.create(createAssetDto, files);
   }
 

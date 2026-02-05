@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,7 +8,6 @@ import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import {
-  concat,
   defer,
   forkJoin,
   from,
@@ -23,7 +23,6 @@ import { Asset } from 'src/schemas/asset.schema';
 import { Item, ItemStatus } from 'src/schemas/item.schema';
 import { generateSerialNumber } from 'src/utils/generate';
 import { Model, Types } from 'mongoose';
-import { JwtPayload } from 'src/types/auth';
 
 @Injectable()
 export class AssetService {
@@ -59,12 +58,11 @@ export class AssetService {
 
         return upload$.pipe(
           switchMap(imageUrls => {
-            console.log('imageUrls', imageUrls);
             return from(
               new this.assetModel({
                 ...createAssetDto,
                 imageUrls,
-                created_by: new Types.ObjectId(userId),
+                createdBy: new Types.ObjectId(userId),
               }).save(),
             );
           }),
@@ -96,9 +94,13 @@ export class AssetService {
   }
 
   // UPDATE
-  update(id: string, updateAssetDto: UpdateAssetDto) {
+  update(id: string, updateAssetDto: UpdateAssetDto, userId: string) {
     return from(
-      this.assetModel.findByIdAndUpdate(id, updateAssetDto, { new: true }),
+      this.assetModel.findByIdAndUpdate(
+        id,
+        { ...updateAssetDto, updatedBy: new Types.ObjectId(userId) },
+        { new: true },
+      ),
     ).pipe(
       map(asset => {
         if (!asset) {
@@ -145,6 +147,57 @@ export class AssetService {
         });
 
         return this.itemModel.insertMany(items);
+      }),
+    );
+  }
+
+  addImages(id: string, imgs: Express.Multer.File[], userId: string) {
+    return from(this.assetModel.findById(id)).pipe(
+      switchMap(asset => {
+        if (!asset) {
+          return throwError(() => new NotFoundException('Asset not found'));
+        }
+        const upload$ = imgs
+          ? forkJoin(
+              imgs.map(file =>
+                defer(() => this.uploadSrv.uploadFile(file, ['asset'])),
+              ),
+            )
+          : of([]);
+
+        return upload$.pipe(
+          switchMap(imgUrls => {
+            asset.imageUrls.push(...imgUrls);
+            asset.updatedBy = new Types.ObjectId(userId);
+            return from(asset.save());
+          }),
+        );
+      }),
+    );
+  }
+
+  removeImages(id: string, index: number, userId: string) {
+    return from(this.assetModel.findById(id)).pipe(
+      switchMap(asset => {
+        if (!asset) {
+          return throwError(() => new NotFoundException('Asset not found'));
+        }
+
+        if (index < 0 || index >= asset.imageUrls.length) {
+          return throwError(
+            () => new BadRequestException('Invalid image index'),
+          );
+        }
+
+        const removedImgUrl = asset.imageUrls[index];
+
+        return this.uploadSrv.removeFile(removedImgUrl).pipe(
+          switchMap(() => {
+            asset.imageUrls.splice(index, 1);
+            asset.updatedBy = new Types.ObjectId(userId);
+            return from(asset.save());
+          }),
+        );
       }),
     );
   }

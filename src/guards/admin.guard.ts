@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Observable } from 'rxjs';
-import { JwtPayload } from 'src/types/auth';
 
 @Injectable()
 export class AdminGuard implements CanActivate {

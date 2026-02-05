@@ -38,10 +38,10 @@ export class Asset {
   active: boolean;
 
   @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: 'user' })
-  created_by: Types.ObjectId;
+  createdBy: Types.ObjectId;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'user' })
-  updated_by?: Types.ObjectId;
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'user', default: null })
+  updatedBy?: Types.ObjectId;
 }
 
 export const AssetSchema = SchemaFactory.createForClass(Asset);

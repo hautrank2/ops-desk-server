@@ -9,6 +9,8 @@ import {
   UseInterceptors,
   UploadedFiles,
   UseGuards,
+  Req,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { CreateAssetDto, CreateAssetFormDataDto } from './dto/create-asset.dto';
@@ -33,9 +35,16 @@ export class AssetController {
   create(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() createAssetDto: CreateAssetDto,
+    @Req() request: Request,
   ) {
-    console.log('files', files, createAssetDto);
-    return this.assetService.create(createAssetDto, files);
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.assetService.create(
+      createAssetDto,
+      request.payload.userId,
+      files,
+    );
   }
 
   @Get()

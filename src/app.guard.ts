@@ -20,7 +20,7 @@ export class AppGuard implements CanActivate {
         });
         // 💡 We're assigning the payload to the request object here
         // so that we can access it in our route handlers
-        request['user'] = payload;
+        request['payload'] = payload;
       } catch (err) {
         console.log('Error: verify token:');
         console.log(err);

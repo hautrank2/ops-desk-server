@@ -14,7 +14,7 @@ import {
   throwError,
 } from 'rxjs';
 import { InjectModel } from '@nestjs/mongoose';
-import { User } from 'src/schemas/user.schema';
+import { User, UserDocument } from 'src/schemas/user.schema';
 import { Model } from 'mongoose';
 import { UserQueryModel } from './dto/user.dto';
 import { escapeRegex } from 'src/utils/query';
@@ -126,7 +126,7 @@ export class UserService {
   findOneByFilter(
     filter?: UserQueryModel,
     opts?: { includePasswordHash?: boolean },
-  ): Observable<User | null> {
+  ): Observable<UserDocument | null> {
     const q: Record<string, any> = {};
 
     if (filter?.email?.trim()) {
@@ -152,7 +152,7 @@ export class UserService {
       query.select('+passwordHash');
     }
 
-    return from(query.lean().exec());
+    return from(query.exec());
   }
 
   update(id: string, updateUserDto: UpdateUserDto) {

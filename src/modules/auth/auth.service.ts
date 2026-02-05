@@ -8,9 +8,7 @@ import {
 import { from, map, switchMap, throwError } from 'rxjs';
 import { UserService } from 'src/modules/user/user.service';
 import { JwtService } from '@nestjs/jwt';
-import { User } from 'src/schemas/user.schema';
 import * as bcrypt from 'bcrypt';
-import { JwtPayload } from 'src/types/auth';
 
 @Injectable()
 export class AuthService {
@@ -25,7 +23,7 @@ export class AuthService {
     return this.userService
       .findOneByFilter({ username }, { includePasswordHash: true })
       .pipe(
-        switchMap((user: User | null) => {
+        switchMap(user => {
           if (!user) {
             return throwError(() => new NotFoundException('User not found'));
           }
@@ -50,9 +48,10 @@ export class AuthService {
               const token = this.jwtService.sign({
                 username: user.username,
                 role: user.role,
+                userId: user._id.toString(),
               });
 
-              return { ...userData, token } satisfies JwtPayload;
+              return { ...userData, token };
             }),
           );
         }),

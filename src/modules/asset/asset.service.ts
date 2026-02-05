@@ -8,6 +8,7 @@ import { UpdateAssetDto } from './dto/update-asset.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import {
   concat,
+  defer,
   forkJoin,
   from,
   map,
@@ -21,7 +22,8 @@ import { CreateAssetItemDto } from './dto/create-asset-item.dto';
 import { Asset } from 'src/schemas/asset.schema';
 import { Item, ItemStatus } from 'src/schemas/item.schema';
 import { generateSerialNumber } from 'src/utils/generate';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
+import { JwtPayload } from 'src/types/auth';
 
 @Injectable()
 export class AssetService {
@@ -33,40 +35,42 @@ export class AssetService {
     private readonly uploadSrv: UploadService,
   ) {}
 
-  create(createAssetDto: CreateAssetDto, files?: Express.Multer.File[]) {
-    const upload$ = files
-      ? forkJoin(files.map(file => this.uploadSrv.uploadFile(file, ['asset'])))
-      : of([]);
-
+  create(
+    createAssetDto: CreateAssetDto,
+    userId: string,
+    files?: Express.Multer.File[],
+  ) {
     return from(this.assetModel.findOne({ code: createAssetDto.code })).pipe(
       switchMap(existed => {
+        console.log('existed', existed);
         if (existed) {
           return throwError(
             () => new ConflictException('Asset code already exists'),
           );
         }
+
+        const upload$ = files
+          ? forkJoin(
+              files.map(file =>
+                defer(() => this.uploadSrv.uploadFile(file, ['asset'])),
+              ),
+            )
+          : of([]);
+
         return upload$.pipe(
           switchMap(imageUrls => {
-            console.log(imageUrls);
+            console.log('imageUrls', imageUrls);
             return from(
               new this.assetModel({
                 ...createAssetDto,
                 imageUrls,
+                created_by: new Types.ObjectId(userId),
               }).save(),
             );
           }),
         );
       }),
     );
-  }
-
-  private saveAsset(dto: CreateAssetDto, files?: Express.Multer.File[]) {
-    const imageUrls = files?.map(f => `/uploads/assets/${f.filename}`) ?? [];
-
-    return new this.assetModel({
-      ...dto,
-      imageUrls,
-    }).save();
   }
 
   // READ ALL

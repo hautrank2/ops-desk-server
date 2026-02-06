@@ -11,6 +11,7 @@ import {
   UseGuards,
   Req,
   ForbiddenException,
+  Query,
 } from '@nestjs/common';
 import { AssetService } from './asset.service';
 import { CreateAssetDto, CreateAssetFormDataDto } from './dto/create-asset.dto';
@@ -19,6 +20,7 @@ import { FilesInterceptor } from '@nestjs/platform-express';
 import { CreateAssetItemDto } from './dto/create-asset-item.dto';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { AssetGuard } from './asset.guard';
+import { AssetQueryDto } from './dto/asset-query.dto';
 
 @Controller('asset')
 @UseGuards(AssetGuard)
@@ -48,8 +50,8 @@ export class AssetController {
   }
 
   @Get()
-  findAll() {
-    return this.assetService.findAll();
+  findAll(@Query() query: AssetQueryDto) {
+    return this.assetService.findAll(query);
   }
 
   @Get(':id')
@@ -75,8 +77,15 @@ export class AssetController {
   }
 
   @Post(':id/items')
-  createItems(@Param('id') id: string, @Body() dto: CreateAssetItemDto) {
-    return this.assetService.createItems(id, dto);
+  createItems(
+    @Param('id') id: string,
+    @Body() dto: CreateAssetItemDto,
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.assetService.createItems(id, dto, request.payload.userId);
   }
 
   @ApiConsumes('multipart/form-data')

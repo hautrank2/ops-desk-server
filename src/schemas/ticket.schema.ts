@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document, Types } from 'mongoose';
+import { User } from './user.schema';
+import { Item } from './item.schema';
 
 export type TicketDocument = Ticket & Document;
 
@@ -40,6 +42,13 @@ export class Ticket {
   @Prop({ required: true, enum: TicketType })
   type: TicketType;
 
+  @Prop({
+    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: Item.name,
+  })
+  assetItemId: Types.ObjectId;
+
   @Prop({ enum: TicketPriority, default: TicketPriority.Medium })
   priority: TicketPriority;
 
@@ -47,7 +56,10 @@ export class Ticket {
   status: TicketStatus;
 
   @Prop()
-  assetId?: string;
+  cause?: string;
+
+  @Prop()
+  note?: string;
 
   @Prop()
   locationId?: string;
@@ -69,6 +81,16 @@ export class Ticket {
 
   @Prop()
   closedAt?: Date;
+
+  @Prop({
+    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: User.name,
+  })
+  createdBy: Types.ObjectId;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name, default: null })
+  updatedBy?: Types.ObjectId;
 }
 
 export const TicketSchema = SchemaFactory.createForClass(Ticket);

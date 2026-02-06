@@ -11,6 +11,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AppGuard } from './app.guard';
 import { AssetModule } from './modules/asset/asset.module';
 import { DepartmentModule } from './modules/department/department.module';
+import { TicketModule } from './modules/ticket/ticket.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { DepartmentModule } from './modules/department/department.module';
     AuthModule,
     AssetModule,
     DepartmentModule,
+    TicketModule,
   ],
   controllers: [AppController],
   providers: [

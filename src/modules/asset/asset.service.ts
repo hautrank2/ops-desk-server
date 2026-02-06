@@ -23,6 +23,8 @@ import { Asset } from 'src/schemas/asset.schema';
 import { Item, ItemStatus } from 'src/schemas/item.schema';
 import { generateSerialNumber } from 'src/utils/generate';
 import { Model, Types } from 'mongoose';
+import { AssetQueryDto } from './dto/asset-query.dto';
+import { TableResponse } from 'src/types/response';
 
 @Injectable()
 export class AssetService {
@@ -72,12 +74,77 @@ export class AssetService {
   }
 
   // READ ALL
-  findAll() {
-    return from(
+  findAll(query: AssetQueryDto): Observable<TableResponse<Asset>> {
+    const {
+      code,
+      name,
+      type,
+      vendor,
+      model,
+      active,
+      createdBy,
+      page = 1,
+      pageSize = 20,
+      sortBy = 'createdAt',
+      order = 'desc',
+    } = query;
+
+    const filter: Record<string, any> = {};
+
+    // text search (partial, case-insensitive)
+    if (code) filter.code = { $regex: code, $options: 'i' };
+    if (name) filter.name = { $regex: name, $options: 'i' };
+    if (vendor) filter.vendor = { $regex: vendor, $options: 'i' };
+    if (model) filter.model = { $regex: model, $options: 'i' };
+
+    // enums
+    if (type) filter.type = type;
+
+    // boolean
+    if (typeof active === 'boolean') filter.active = active;
+
+    // ids
+    if (createdBy) filter.createdBy = createdBy;
+
+    // pagination
+    const safePage = Math.max(1, Number(page) || 1);
+    const safePageSize = Math.max(1, Math.min(200, Number(pageSize) || 20));
+    const skip = (safePage - 1) * safePageSize;
+
+    // sorting (whitelist)
+    const allowedSort = new Set([
+      'createdAt',
+      'updatedAt',
+      'code',
+      'name',
+      'type',
+      'active',
+    ]);
+    const safeSortBy = allowedSort.has(sortBy) ? sortBy : 'createdAt';
+    const sort = { [safeSortBy]: order === 'asc' ? 1 : -1 } as Record<
+      string,
+      1 | -1
+    >;
+
+    const count$ = from(this.assetModel.countDocuments(filter));
+    const data$ = from(
       this.assetModel
-        .find({ status: { $ne: 'Retired' } })
-        .sort({ createdAt: -1 })
-        .lean(),
+        .find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(safePageSize)
+        .lean()
+        .exec(),
+    );
+
+    return forkJoin([count$, data$]).pipe(
+      map(([total, items]) => ({
+        total,
+        totalPage: Math.ceil(total / safePageSize),
+        items,
+        page: safePage,
+        pageSize: safePageSize,
+      })),
     );
   }
 
@@ -126,7 +193,7 @@ export class AssetService {
   }
 
   // Create items
-  createItems(id: string, dto: CreateAssetItemDto) {
+  createItems(id: string, dto: CreateAssetItemDto, userId: string) {
     return from(this.findOne(id)).pipe(
       switchMap(async asset => {
         if (!asset) {
@@ -143,6 +210,8 @@ export class AssetService {
             ownerDeptId: dto.ownerDeptId,
             serialNumber: dto.serialNumber ?? generateSerialNumber(asset.code),
             note: dto.note,
+            createdBy: new Types.ObjectId(userId),
+            updatedBy: null,
           };
         });
 

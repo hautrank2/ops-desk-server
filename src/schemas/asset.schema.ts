@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document, Types } from 'mongoose';
+import { User } from './user.schema';
 
 export type AssetDocument = Asset & Document;
 
@@ -37,10 +38,14 @@ export class Asset {
   @Prop({ type: Boolean, default: true })
   active: boolean;
 
-  @Prop({ required: true, type: mongoose.Schema.Types.ObjectId, ref: 'user' })
+  @Prop({
+    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: User.name,
+  })
   createdBy: Types.ObjectId;
 
-  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'user', default: null })
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name, default: null })
   updatedBy?: Types.ObjectId;
 }
 

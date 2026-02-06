@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import mongoose, { Document, Types } from 'mongoose';
+import { User } from './user.schema';
 
 export type ItemDocument = Item & Document;
 
@@ -25,7 +26,7 @@ export class Item {
   locationId?: string;
 
   @Prop()
-  ownerDeptId?: string;
+  owerId?: string;
 
   @Prop()
   serialNumber?: string;
@@ -35,6 +36,16 @@ export class Item {
 
   @Prop({ type: [String], default: [] })
   imageUrls: string[];
+
+  @Prop({
+    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: User.name,
+  })
+  createdBy: Types.ObjectId;
+
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: User.name, default: null })
+  updatedBy?: Types.ObjectId;
 }
 
 export const ItemSchema = SchemaFactory.createForClass(Item);

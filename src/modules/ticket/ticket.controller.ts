@@ -16,6 +16,7 @@ import { TicketService } from './ticket.service';
 import {
   CreateTicketDto,
   CreateTicketFromDataDto,
+  TicketImageFormDataDto,
 } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
@@ -59,12 +60,52 @@ export class TicketController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTicketDto: UpdateTicketDto) {
-    return this.ticketService.update(+id, updateTicketDto);
+  update(
+    @Param('id') id: string,
+    @Body() updateTicketDto: UpdateTicketDto,
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.ticketService.update(
+      id,
+      updateTicketDto,
+      request.payload.userId,
+    );
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.ticketService.remove(+id);
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Ticket images',
+    type: TicketImageFormDataDto,
+  })
+  @UseInterceptors(FilesInterceptor('images', 2))
+  @Post(':id/images')
+  addImage(
+    @Param('id') id: string,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.ticketService.addImages(id, files, request.payload.userId);
+  }
+
+  @Delete(':id/images/:imgIndex')
+  removeImages(
+    @Param('id') id: string,
+    @Param('imgIndex') imgIndex: string,
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.ticketService.removeImages(
+      id,
+      +imgIndex,
+      request.payload.userId,
+    );
   }
 }

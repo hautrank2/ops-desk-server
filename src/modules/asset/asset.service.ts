@@ -74,7 +74,7 @@ export class AssetService {
   }
 
   // READ ALL
-  findAll(query: AssetQueryDto): Observable<TableResponse<Asset>> {
+  findAll(filters: AssetQueryDto): Observable<TableResponse<Asset>> {
     const {
       code,
       name,
@@ -87,7 +87,8 @@ export class AssetService {
       pageSize = 20,
       sortBy = 'createdAt',
       order = 'desc',
-    } = query;
+      populations,
+    } = filters;
 
     const filter: Record<string, any> = {};
 
@@ -127,15 +128,16 @@ export class AssetService {
     >;
 
     const count$ = from(this.assetModel.countDocuments(filter));
-    const data$ = from(
-      this.assetModel
-        .find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(safePageSize)
-        .lean()
-        .exec(),
-    );
+    let query = this.assetModel
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(safePageSize);
+
+    if (populations) {
+      query = query.populate(populations);
+    }
+    const data$ = from(query.lean().exec());
 
     return forkJoin([count$, data$]).pipe(
       map(([total, items]) => ({

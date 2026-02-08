@@ -1,20 +1,22 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsEnum,
-  IsInt,
   IsOptional,
   IsString,
-  Min,
 } from 'class-validator';
 import { AssetType } from 'src/schemas/asset.schema';
 import { QueryPagination } from 'src/types/query';
 
+export enum AssetPopulation {
+  CreatedBy = 'createdBy',
+  UpdatedBy = 'updatedBy',
+}
 export class AssetQueryDto extends QueryPagination {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
-    example: 'CAM-',
   })
   @IsOptional()
   @IsString()
@@ -22,7 +24,6 @@ export class AssetQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Search by name (partial match)',
-    example: 'Hikvision',
   })
   @IsOptional()
   @IsString()
@@ -35,7 +36,6 @@ export class AssetQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Filter by vendor (partial match)',
-    example: 'Hikvision',
   })
   @IsOptional()
   @IsString()
@@ -43,7 +43,6 @@ export class AssetQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Filter by model (partial match)',
-    example: 'DS-2CD2143',
   })
   @IsOptional()
   @IsString()
@@ -57,7 +56,6 @@ export class AssetQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Created by userId',
-    example: '65f0c1b0c2a3d4e5f6789012',
   })
   @IsOptional()
   @IsString()
@@ -66,7 +64,6 @@ export class AssetQueryDto extends QueryPagination {
   // sort
   @ApiPropertyOptional({
     description: 'Sort field',
-    example: 'createdAt',
     enum: ['createdAt', 'updatedAt', 'code', 'name', 'type', 'active'],
   })
   @IsOptional()
@@ -75,10 +72,19 @@ export class AssetQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Sort order',
-    example: 'desc',
     enum: ['asc', 'desc'],
   })
   @IsOptional()
   @IsString()
   order?: 'asc' | 'desc' = 'desc';
+
+  @ApiPropertyOptional({
+    description: 'The field for Population',
+    isArray: true,
+    enum: AssetPopulation,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(AssetPopulation, { each: true })
+  populations?: AssetPopulation[];
 }

@@ -1,11 +1,15 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Ticket, TicketDocument } from 'src/schemas/ticket.schema';
-import { Model, Types } from 'mongoose';
+import { Ticket } from 'src/schemas/ticket.schema';
+import { Model, QueryFilter, Types } from 'mongoose';
 import {
-  concat,
   defer,
   forkJoin,
   from,
@@ -58,16 +62,15 @@ export class TicketService {
     );
   }
 
-  findAll(query: TicketQueryDto): Observable<TableResponse<Ticket>> {
+  findAll(filters: TicketQueryDto): Observable<TableResponse<Ticket>> {
     const {
       code,
       title,
       type,
       priority,
       status,
-      assetItemId,
+      assetItemIds,
       locationId,
-      requesterId,
       assigneeId,
       departmentId,
       startDueAt,
@@ -76,9 +79,11 @@ export class TicketService {
       pageSize = 20,
       sortBy = 'createdAt',
       order = 'desc',
-    } = query;
+      populations,
+      createdBy,
+    } = filters;
 
-    const filter: Record<string, any> = {};
+    const filter: QueryFilter<Ticket> = {};
 
     // text search (partial, case-insensitive)
     if (code) filter.code = { $regex: code, $options: 'i' };
@@ -90,11 +95,11 @@ export class TicketService {
     if (status) filter.status = status;
 
     // ids
-    if (assetItemId) filter.assetItemId = assetItemId;
+    if (assetItemIds) filter.assetItemIds = { $all: assetItemIds };
     if (locationId) filter.locationId = locationId;
-    if (requesterId) filter.requesterId = requesterId;
 
     if (assigneeId) filter.assigneeId = assigneeId;
+    if (createdBy) filter.createdBy = createdBy;
 
     if (departmentId) filter.departmentId = departmentId;
 
@@ -127,15 +132,18 @@ export class TicketService {
     >;
 
     const count$ = from(this.ticketModel.countDocuments(filter));
-    const data$ = from(
-      this.ticketModel
-        .find(filter)
-        .sort(sort)
-        .skip(skip)
-        .limit(safePageSize)
-        .lean()
-        .exec(),
-    );
+
+    let query = this.ticketModel
+      .find(filter)
+      .sort(sort)
+      .skip(skip)
+      .limit(safePageSize);
+
+    if (populations) {
+      query = query.populate(populations);
+    }
+
+    const data$ = from(query.lean().exec());
 
     return forkJoin([count$, data$]).pipe(
       map(([total, items]) => {
@@ -150,15 +158,82 @@ export class TicketService {
     );
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} ticket`;
+  findOne(id: number): Observable<Ticket> {
+    return from(this.ticketModel.findById(id).lean()).pipe(
+      map(res => {
+        if (!res) {
+          throw new NotFoundException('Ticket not found');
+        }
+        return res;
+      }),
+    );
   }
 
-  update(id: number, updateTicketDto: UpdateTicketDto) {
-    return `This action updates a #${id} ticket`;
+  update(id: string, updateTicketDto: UpdateTicketDto, userId: string) {
+    return from(
+      this.ticketModel.findByIdAndUpdate(
+        id,
+        { ...updateTicketDto, updatedBy: new Types.ObjectId(userId) },
+        { new: true },
+      ),
+    ).pipe(
+      map(ticket => {
+        if (!ticket) {
+          throw new NotFoundException('Asset not found');
+        }
+        return ticket;
+      }),
+    );
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} ticket`;
+  addImages(id: string, imgs: Express.Multer.File[], userId: string) {
+    return from(this.ticketModel.findById(id)).pipe(
+      switchMap(ticket => {
+        if (!ticket) {
+          return throwError(() => new NotFoundException('Asset not found'));
+        }
+        const upload$ = imgs
+          ? forkJoin(
+              imgs.map(file =>
+                defer(() => this.uploadSrv.uploadFile(file, ['ticket'])),
+              ),
+            )
+          : of([]);
+
+        return upload$.pipe(
+          switchMap(imgUrls => {
+            ticket.imageUrls.push(...imgUrls);
+            ticket.updatedBy = new Types.ObjectId(userId);
+            return from(ticket.save());
+          }),
+        );
+      }),
+    );
+  }
+
+  removeImages(id: string, index: number, userId: string) {
+    return from(this.ticketModel.findById(id)).pipe(
+      switchMap(ticket => {
+        if (!ticket) {
+          return throwError(() => new NotFoundException('Asset not found'));
+        }
+
+        if (index < 0 || index >= ticket.imageUrls.length) {
+          return throwError(
+            () => new BadRequestException('Invalid image index'),
+          );
+        }
+
+        const removedImgUrl = ticket.imageUrls[index];
+
+        return this.uploadSrv.removeFile(removedImgUrl).pipe(
+          switchMap(() => {
+            ticket.imageUrls.splice(index, 1);
+            ticket.updatedBy = new Types.ObjectId(userId);
+            return from(ticket.save());
+          }),
+        );
+      }),
+    );
   }
 }

@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsMongoId,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import {
   TicketPriority,
   TicketStatus,
@@ -46,19 +55,22 @@ export class CreateTicketDto {
   @IsString()
   note?: string;
 
-  @ApiPropertyOptional({ example: '65f0c1b0c2a3d4e5f6789012' })
-  @IsOptional()
-  @IsString()
-  assetId?: string;
+  @ApiPropertyOptional({
+    example: ['65f0c1b0c2a3d4e5f6789012'],
+    isArray: true,
+    type: [String],
+    description: 'At least 1 asset item id',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsMongoId()
+  assetItemIds: string[];
 
   @ApiPropertyOptional({ example: '65f0c1b0c2a3d4e5f6789012' })
   @IsOptional()
   @IsString()
   locationId?: string;
-
-  @ApiProperty({ example: '65f0c1b0c2a3d4e5f6789012' })
-  @IsString()
-  requesterId: string;
 
   @ApiPropertyOptional({ example: '65f0c1b0c2a3d4e5f6789012' })
   @IsOptional()
@@ -88,6 +100,15 @@ export class CreateTicketDto {
 }
 
 export class CreateTicketFromDataDto extends CreateTicketDto {
+  @ApiProperty({
+    type: 'array',
+    items: { type: 'string', format: 'binary' },
+    description: 'Upload multiple images',
+  })
+  images: any[];
+}
+
+export class TicketImageFormDataDto {
   @ApiProperty({
     type: 'array',
     items: { type: 'string', format: 'binary' },

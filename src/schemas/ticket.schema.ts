@@ -44,10 +44,13 @@ export class Ticket {
 
   @Prop({
     required: true,
-    type: mongoose.Schema.Types.ObjectId,
-    ref: Item.name,
+    type: [{ type: mongoose.Schema.Types.ObjectId, ref: Item.name }],
+    validate: [
+      (v: Types.ObjectId[]) => Array.isArray(v) && v.length > 0,
+      'assetItemIds must not be empty',
+    ],
   })
-  assetItemId: Types.ObjectId;
+  assetItemIds: Types.ObjectId[];
 
   @Prop({ enum: TicketPriority, default: TicketPriority.Medium })
   priority: TicketPriority;
@@ -64,9 +67,6 @@ export class Ticket {
   @Prop()
   locationId?: string;
 
-  @Prop({ required: true })
-  requesterId: string;
-
   @Prop()
   assigneeId?: string;
 
@@ -74,7 +74,7 @@ export class Ticket {
   teamId?: string;
 
   @Prop({ type: [String], default: [] })
-  images?: string[];
+  imageUrls: string[];
 
   @Prop()
   dueAt?: Date;

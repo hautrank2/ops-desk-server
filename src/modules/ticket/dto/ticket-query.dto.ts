@@ -3,18 +3,24 @@ import {
   IsArray,
   IsDateString,
   IsEnum,
-  IsInt,
+  IsMongoId,
   IsOptional,
   IsString,
-  Min,
 } from 'class-validator';
-import { Type } from 'class-transformer';
 import {
   TicketPriority,
   TicketStatus,
   TicketType,
 } from 'src/schemas/ticket.schema';
 import { QueryPagination } from 'src/types/query';
+import { ToArrayQuery } from 'src/utils/transform';
+
+export enum TicketPopulationEnum {
+  CreatedBy = 'createdBy',
+  UpdatedBy = 'updatedBy',
+  assetItemId = 'assetItemId',
+}
+
 export class TicketQueryDto extends QueryPagination {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
@@ -48,32 +54,25 @@ export class TicketQueryDto extends QueryPagination {
   status?: TicketStatus;
 
   @ApiPropertyOptional({
-    description: 'Asset item id',
-    example: '65f0c1b0c2a3d4e5f6789012',
+    description: 'Asset item ids',
+    isArray: true,
+    type: [String],
   })
   @IsOptional()
-  @IsString()
-  assetItemId?: string;
+  @ToArrayQuery()
+  @IsArray()
+  @IsMongoId()
+  assetItemIds?: string[];
 
   @ApiPropertyOptional({
     description: 'Location id',
-    example: '65f0c1b0c2a3d4e5f6789012',
   })
   @IsOptional()
   @IsString()
   locationId?: string;
 
   @ApiPropertyOptional({
-    description: 'Requester id',
-    example: '65f0c1b0c2a3d4e5f6789012',
-  })
-  @IsOptional()
-  @IsString()
-  requesterId?: string;
-
-  @ApiPropertyOptional({
     description: 'Assignee id',
-    example: '65f0c1b0c2a3d4e5f6789012',
   })
   @IsOptional()
   @IsString()
@@ -81,27 +80,32 @@ export class TicketQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Department id',
-    example: '65f0c1b0c2a3d4e5f6789012',
   })
   @IsOptional()
   @IsString()
   departmentId?: string;
 
   @ApiPropertyOptional({
-    description: 'Due date range start (ISO)',
-    example: '2026-02-01T00:00:00.000Z',
+    description:
+      'Due date range start (ISO), example: 2026-02-28T23:59:59.999Z',
   })
   @IsOptional()
   @IsDateString()
   startDueAt?: string;
 
   @ApiPropertyOptional({
-    description: 'Due date range end (ISO)',
-    example: '2026-02-28T23:59:59.999Z',
+    description: 'Due date range end (ISO), example: 2026-02-28T23:59:59.999Z',
   })
   @IsOptional()
   @IsDateString()
   endDueAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'User id',
+  })
+  @IsOptional()
+  @IsString()
+  createdBy?: string;
 
   // sort
   @ApiPropertyOptional({
@@ -121,4 +125,14 @@ export class TicketQueryDto extends QueryPagination {
   @IsOptional()
   @IsString()
   order?: 'asc' | 'desc' = 'desc';
+
+  @ApiPropertyOptional({
+    description: 'The field for Population',
+    isArray: true,
+    enum: TicketPopulationEnum,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(TicketPopulationEnum, { each: true })
+  populations?: TicketPopulationEnum[];
 }

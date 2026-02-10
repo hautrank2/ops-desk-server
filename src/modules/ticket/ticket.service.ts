@@ -39,13 +39,14 @@ export class TicketService {
           );
         }
 
-        const upload$ = files
-          ? forkJoin(
-              files.map(file =>
-                defer(() => this.uploadSrv.uploadFile(file, ['ticket'])),
-              ),
-            )
-          : of([]);
+        const upload$ =
+          files && files.length > 0
+            ? forkJoin(
+                files.map(file =>
+                  defer(() => this.uploadSrv.uploadFile(file, ['ticket'])),
+                ),
+              )
+            : of([]);
 
         return upload$.pipe(
           switchMap(imageUrls => {

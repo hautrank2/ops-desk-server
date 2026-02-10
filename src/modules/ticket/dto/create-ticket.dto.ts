@@ -35,6 +35,18 @@ export class CreateTicketDto {
   @IsEnum(TicketType)
   type: TicketType;
 
+  @ApiPropertyOptional({
+    example: ['65f0c1b0c2a3d4e5f6789012'],
+    isArray: true,
+    type: [String],
+    description: 'At least 1 asset item id',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsMongoId({ each: true })
+  assetItemIds: string[];
+
   @ApiPropertyOptional({ enum: TicketPriority, default: TicketPriority.Medium })
   @IsOptional()
   @IsEnum(TicketPriority)
@@ -54,18 +66,6 @@ export class CreateTicketDto {
   @IsOptional()
   @IsString()
   note?: string;
-
-  @ApiPropertyOptional({
-    example: ['65f0c1b0c2a3d4e5f6789012'],
-    isArray: true,
-    type: [String],
-    description: 'At least 1 asset item id',
-  })
-  @IsArray()
-  @ArrayMinSize(1)
-  @ArrayUnique()
-  @IsMongoId()
-  assetItemIds: string[];
 
   @ApiPropertyOptional({ example: '65f0c1b0c2a3d4e5f6789012' })
   @IsOptional()

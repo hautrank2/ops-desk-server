@@ -12,6 +12,7 @@ import { AppGuard } from './app.guard';
 import { AssetModule } from './modules/asset/asset.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { TicketModule } from './modules/ticket/ticket.module';
+import { AssetItemModule } from './modules/asset-item/asset-item.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { TicketModule } from './modules/ticket/ticket.module';
     AssetModule,
     DepartmentModule,
     TicketModule,
+    AssetItemModule,
   ],
   controllers: [AppController],
   providers: [

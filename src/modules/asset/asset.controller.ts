@@ -77,6 +77,18 @@ export class AssetController {
   }
 
   @Post(':id/items')
+  getItems(
+    @Param('id') id: string,
+    @Body() dto: CreateAssetItemDto,
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.assetService.createItems(id, dto, request.payload.userId);
+  }
+
+  @Post(':id/items')
   createItems(
     @Param('id') id: string,
     @Body() dto: CreateAssetItemDto,

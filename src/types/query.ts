@@ -1,6 +1,6 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Min } from 'class-validator';
+import { ApiPropertyOptional, IntersectionType } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
+import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class QueryPagination {
   // pagination
@@ -18,3 +18,25 @@ export class QueryPagination {
   @Min(1)
   pageSize?: number = 20;
 }
+
+export class QueryInclude {
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['createdBy', 'updatedBy'],
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').map(v => v.trim());
+    return [];
+  })
+  @IsArray()
+  @IsString({ each: true })
+  include?: string[];
+}
+
+export class QueryCommon extends IntersectionType(
+  QueryPagination,
+  QueryInclude,
+) {}

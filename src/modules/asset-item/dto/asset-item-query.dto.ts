@@ -1,9 +1,10 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { ItemStatus } from 'src/schemas/item.schema';
-import { QueryPagination } from 'src/types/query';
+import { QueryCommon } from 'src/types/query';
 
-export class AssetItemQueryDto extends QueryPagination {
+export class AssetItemQueryDto extends QueryCommon {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
   })

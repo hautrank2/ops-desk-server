@@ -13,6 +13,7 @@ import { AssetModule } from './modules/asset/asset.module';
 import { DepartmentModule } from './modules/department/department.module';
 import { TicketModule } from './modules/ticket/ticket.module';
 import { AssetItemModule } from './modules/asset-item/asset-item.module';
+import { LocationModule } from './modules/location/location.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AssetItemModule } from './modules/asset-item/asset-item.module';
     DepartmentModule,
     TicketModule,
     AssetItemModule,
+    LocationModule,
   ],
   controllers: [AppController],
   providers: [

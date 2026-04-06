@@ -24,7 +24,15 @@ import { Item, ItemStatus } from 'src/schemas/item.schema';
 import { generateSerialNumber } from 'src/utils/generate';
 import { Model, Types } from 'mongoose';
 import { AssetQueryDto } from './dto/asset-query.dto';
-import { TableResponse } from 'src/types/response';
+
+type AssetItemCount = {
+  _id: string;
+  total: number;
+  Active: number;
+  Faulty: number;
+  Maintenance: number;
+  Retired: number;
+};
 
 @Injectable()
 export class AssetService {
@@ -74,7 +82,7 @@ export class AssetService {
   }
 
   // READ ALL
-  findAll(filters: AssetQueryDto): Observable<TableResponse<Asset>> {
+  findAll(filters: AssetQueryDto): Observable<any> {
     const {
       code,
       name,
@@ -83,36 +91,24 @@ export class AssetService {
       model,
       active,
       createdBy,
-      page = 1,
-      pageSize = 20,
+      page,
+      pageSize,
       sortBy = 'createdAt',
       order = 'desc',
-      populations,
+      include = [],
+      itemCount = false,
     } = filters;
 
     const filter: Record<string, any> = {};
 
-    // text search (partial, case-insensitive)
     if (code) filter.code = { $regex: code, $options: 'i' };
     if (name) filter.name = { $regex: name, $options: 'i' };
     if (vendor) filter.vendor = { $regex: vendor, $options: 'i' };
     if (model) filter.model = { $regex: model, $options: 'i' };
-
-    // enums
     if (type) filter.type = type;
-
-    // boolean
     if (typeof active === 'boolean') filter.active = active;
-
-    // ids
     if (createdBy) filter.createdBy = createdBy;
 
-    // pagination
-    const safePage = Math.max(1, Number(page) || 1);
-    const safePageSize = Math.max(1, Math.min(200, Number(pageSize) || 20));
-    const skip = (safePage - 1) * safePageSize;
-
-    // sorting (whitelist)
     const allowedSort = new Set([
       'createdAt',
       'updatedAt',
@@ -127,26 +123,71 @@ export class AssetService {
       1 | -1
     >;
 
-    const count$ = from(this.assetModel.countDocuments(filter));
+    const populations = this.buildPopulate(include);
+
+    const hasPagination =
+      page !== undefined &&
+      page !== null &&
+      pageSize !== undefined &&
+      pageSize !== null;
+
+    if (!hasPagination) {
+      let query = this.assetModel.find(filter).sort(sort);
+      if (populations.length) query = query.populate(populations);
+
+      return from(query.lean().exec()).pipe(
+        switchMap((items: any[]) => {
+          const total$ = from(this.assetModel.countDocuments(filter));
+
+          // FIX: lấy _id từ items đã query, chỉ count những asset này
+          const itemCount$ = itemCount
+            ? this.getItemCountStats$(items.map(i => i._id))
+            : of([] as AssetItemCount[]);
+
+          return forkJoin([total$, itemCount$]).pipe(
+            map(([total, itemCountStats]) => ({
+              total,
+              items: itemCount
+                ? this.attachItemCount(items, itemCountStats)
+                : items,
+            })),
+          );
+        }),
+      );
+    }
+
+    const safePage = Math.max(1, Number(page) || 1);
+    const safePageSize = Math.max(1, Math.min(200, Number(pageSize) || 20));
+    const skip = (safePage - 1) * safePageSize;
+
     let query = this.assetModel
       .find(filter)
       .sort(sort)
       .skip(skip)
       .limit(safePageSize);
+    if (populations.length) query = query.populate(populations);
 
-    if (populations) {
-      query = query.populate(populations);
-    }
-    const data$ = from(query.lean().exec());
+    return forkJoin([
+      from(this.assetModel.countDocuments(filter)),
+      from(query.lean().exec()),
+    ]).pipe(
+      switchMap(([total, items]: [number, any[]]) => {
+        const itemCount$: Observable<AssetItemCount[]> = itemCount
+          ? this.getItemCountStats$(items.map(i => i._id))
+          : of<AssetItemCount[]>([]);
 
-    return forkJoin([count$, data$]).pipe(
-      map(([total, items]) => ({
-        total,
-        totalPage: Math.ceil(total / safePageSize),
-        items,
-        page: safePage,
-        pageSize: safePageSize,
-      })),
+        return itemCount$.pipe(
+          map(itemCountStats => ({
+            total,
+            totalPage: Math.ceil(total / safePageSize),
+            page: safePage,
+            pageSize: safePageSize,
+            items: itemCount
+              ? this.attachItemCount(items, itemCountStats)
+              : items,
+          })),
+        );
+      }),
     );
   }
 
@@ -202,20 +243,22 @@ export class AssetService {
           throw new NotFoundException('Asset not found');
         }
 
-        const count = await this.itemModel.countDocuments({ assetId: id });
-        const items = Array.from({ length: dto.quantity }).map((_, i) => {
-          return {
-            assetId: id,
-            code: `${asset.code}-${String(count + i + 1).padStart(3, '0')}`,
-            status: ItemStatus.Active,
-            locationId: dto.locationId,
-            ownerDeptId: dto.ownerDeptId,
-            serialNumber: dto.serialNumber ?? generateSerialNumber(asset.code),
-            note: dto.note,
-            createdBy: new Types.ObjectId(userId),
-            updatedBy: null,
-          };
+        const assetObjectId = new Types.ObjectId(id); // convert 1 lần
+
+        const count = await this.itemModel.countDocuments({
+          assetId: assetObjectId,
         });
+        const items = Array.from({ length: dto.quantity }).map((_, i) => ({
+          assetId: assetObjectId, // lưu ObjectId
+          code: `${asset.code}-${String(count + i + 1).padStart(3, '0')}`,
+          status: ItemStatus.Active,
+          locationId: dto.locationId,
+          ownerDeptId: dto.ownerDeptId,
+          serialNumber: dto.serialNumber ?? generateSerialNumber(asset.code),
+          note: dto.note,
+          createdBy: new Types.ObjectId(userId),
+          updatedBy: null,
+        }));
 
         return this.itemModel.insertMany(items);
       }),
@@ -271,5 +314,93 @@ export class AssetService {
         );
       }),
     );
+  }
+
+  private getItemCountStats$(assetIds: any[]): Observable<AssetItemCount[]> {
+    const objectIds = assetIds.map(id => new Types.ObjectId(String(id)));
+
+    return from(
+      this.itemModel
+        .aggregate<AssetItemCount>([
+          {
+            $match: { assetId: { $in: objectIds } },
+          },
+          {
+            $group: {
+              _id: '$assetId',
+              total: { $sum: 1 },
+              Active: {
+                $sum: { $cond: [{ $eq: ['$status', 'Active'] }, 1, 0] },
+              },
+              Faulty: {
+                $sum: { $cond: [{ $eq: ['$status', 'Faulty'] }, 1, 0] },
+              },
+              Maintenance: {
+                $sum: { $cond: [{ $eq: ['$status', 'Maintenance'] }, 1, 0] },
+              },
+              Retired: {
+                $sum: { $cond: [{ $eq: ['$status', 'Retired'] }, 1, 0] },
+              },
+            },
+          },
+          {
+            $project: {
+              _id: { $toString: '$_id' }, // convert về string để attachItemCount map đúng
+              total: 1,
+              Active: 1,
+              Faulty: 1,
+              Maintenance: 1,
+              Retired: 1,
+            },
+          },
+        ])
+        .exec(),
+    );
+  }
+
+  // attachItemCount giữ nguyên — Map đã O(1), không cần loop thêm
+  private attachItemCount<T extends { _id: any }>(
+    items: T[],
+    itemCountStats: AssetItemCount[],
+  ): (T & { itemCount: AssetItemCount })[] {
+    const statsMap = new Map<string, AssetItemCount>(
+      itemCountStats.map(stat => [stat._id, stat]),
+    );
+
+    return items.map(item => {
+      const stat = statsMap.get(String(item._id));
+      return {
+        ...item,
+        itemCount: {
+          _id: String(item._id),
+          total: stat?.total ?? 0,
+          Active: stat?.Active ?? 0,
+          Faulty: stat?.Faulty ?? 0,
+          Maintenance: stat?.Maintenance ?? 0,
+          Retired: stat?.Retired ?? 0,
+        },
+      };
+    });
+  }
+
+  private buildPopulate(include: string[] = []) {
+    const includeSet = new Set(include);
+    const populations: any[] = [];
+
+    if (includeSet.has('createdBy')) {
+      populations.push({
+        path: 'createdBy',
+        select: '_id username email name role status',
+      });
+    }
+
+    if (includeSet.has('updatedBy')) {
+      populations.push({
+        path: 'updatedBy',
+        select: '_id username email name role status',
+      });
+    }
+
+    return populations;
   }
 }

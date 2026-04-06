@@ -37,9 +37,4 @@ export class CreateAssetItemDto {
   @IsOptional()
   @IsString()
   note?: string;
-
-  @ApiPropertyOptional({ type: [String] })
-  @IsOptional()
-  @IsArray()
-  imageUrls?: string[];
 }

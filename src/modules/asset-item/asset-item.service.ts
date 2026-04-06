@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { from, map, of, switchMap, throwError } from 'rxjs';
 import { AssetItemQueryDto } from './dto/asset-item-query.dto';
 import { UpdateAssetItemDto } from './dto/update-asset-item.dto';
 import { Item, ItemDocument } from 'src/schemas/item.schema';
@@ -16,20 +17,17 @@ export class AssetItemService {
     private readonly itemModel: Model<ItemDocument>,
   ) {}
 
-  async findAll(query: AssetItemQueryDto) {
+  findAll(query: AssetItemQueryDto) {
     const {
-      page = 1,
-      pageSize = 10,
+      page,
+      pageSize,
+      include = [],
       code,
       serialNumber,
       locationId,
       assetId,
       status,
     } = query;
-
-    const pageNumber = Number(page) > 0 ? Number(page) : 1;
-    const limitNumber = Number(pageSize) > 0 ? Number(pageSize) : 10;
-    const skip = (pageNumber - 1) * limitNumber;
 
     const filter: Record<string, any> = {};
 
@@ -46,71 +44,146 @@ export class AssetItemService {
     }
 
     if (assetId) {
-      filter.assetId = assetId;
+      filter.assetId = new Types.ObjectId(assetId);
     }
 
     if (status) {
       filter.status = status;
     }
 
-    const [items, total] = await Promise.all([
-      this.itemModel
-        .find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNumber)
-        .lean(),
-      this.itemModel.countDocuments(filter),
-    ]);
+    const hasPagination =
+      page !== undefined &&
+      page !== null &&
+      pageSize !== undefined &&
+      pageSize !== null;
 
-    return {
-      items,
-      page: pageNumber,
-      pageSize: limitNumber,
-      total,
-      totalPages: Math.ceil(total / limitNumber),
-    };
-  }
+    const populates = this.buildPopulate(include);
 
-  async findOne(id: string) {
-    this.validateObjectId(id);
+    if (!hasPagination) {
+      let mongooseQuery = this.itemModel.find(filter).sort({ createdAt: -1 });
 
-    const item = await this.itemModel.findById(id).lean();
+      for (const populate of populates) {
+        mongooseQuery = mongooseQuery.populate(populate);
+      }
 
-    if (!item) {
-      throw new NotFoundException('Asset item not found');
+      return from(mongooseQuery.lean().exec()).pipe(
+        map(items => ({
+          items,
+          total: items.length,
+        })),
+      );
     }
 
-    return item;
-  }
+    const pageNumber = Number(page) > 0 ? Number(page) : 1;
+    const limitNumber = Number(pageSize) > 0 ? Number(pageSize) : 10;
+    const skip = (pageNumber - 1) * limitNumber;
 
-  async update(id: string, updateAssetItemDto: UpdateAssetItemDto) {
-    this.validateObjectId(id);
+    let mongooseQuery = this.itemModel
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNumber);
 
-    const updated = await this.itemModel
-      .findByIdAndUpdate(
-        id,
-        {
-          ...updateAssetItemDto,
-          updatedAt: new Date(),
-        },
-        {
-          new: true,
-          runValidators: true,
-        },
-      )
-      .lean();
-
-    if (!updated) {
-      throw new NotFoundException('Asset item not found');
+    for (const populate of populates) {
+      mongooseQuery = mongooseQuery.populate(populate);
     }
 
-    return updated;
+    return from(
+      Promise.all([
+        mongooseQuery.lean(),
+        this.itemModel.countDocuments(filter),
+      ]),
+    ).pipe(
+      map(([items, total]) => ({
+        items,
+        page: pageNumber,
+        pageSize: limitNumber,
+        total,
+        totalPages: Math.ceil(total / limitNumber),
+      })),
+    );
+  }
+
+  findOne(id: string, include: string[] = []) {
+    return this.validateObjectId(id).pipe(
+      switchMap(() => {
+        let mongooseQuery = this.itemModel.findById(id);
+
+        for (const populate of this.buildPopulate(include)) {
+          mongooseQuery = mongooseQuery.populate(populate);
+        }
+
+        return from(mongooseQuery.lean());
+      }),
+      switchMap(item => {
+        if (!item) {
+          return throwError(
+            () => new NotFoundException('Asset item not found'),
+          );
+        }
+
+        return of(item);
+      }),
+    );
+  }
+
+  update(id: string, updateAssetItemDto: UpdateAssetItemDto) {
+    return this.validateObjectId(id).pipe(
+      switchMap(() =>
+        from(
+          this.itemModel
+            .findByIdAndUpdate(
+              id,
+              {
+                ...updateAssetItemDto,
+                updatedAt: new Date(),
+              },
+              {
+                new: true,
+                runValidators: true,
+              },
+            )
+            .lean(),
+        ),
+      ),
+      switchMap(updated => {
+        if (!updated) {
+          return throwError(
+            () => new NotFoundException('Asset item not found'),
+          );
+        }
+
+        return of(updated);
+      }),
+    );
   }
 
   private validateObjectId(id: string) {
     if (!Types.ObjectId.isValid(id)) {
-      throw new BadRequestException('Invalid id');
+      return throwError(() => new BadRequestException('Invalid id'));
     }
+
+    return of(true);
+  }
+
+  private buildPopulate(include: string[] = []) {
+    const includeSet = new Set(include);
+    const populates: any[] = [];
+
+    if (includeSet.has('createdBy')) {
+      populates.push({
+        path: 'createdBy',
+        select: '_id username email name role status',
+      });
+    }
+
+    if (includeSet.has('updatedBy')) {
+      populates.push({
+        path: 'updatedBy',
+        select: '_id username email name role status',
+      });
+    }
+
+    return populates;
   }
 }

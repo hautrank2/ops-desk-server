@@ -8,13 +8,9 @@ import {
   IsString,
 } from 'class-validator';
 import { AssetType } from 'src/schemas/asset.schema';
-import { QueryPagination } from 'src/types/query';
+import { QueryCommon } from 'src/types/query';
 
-export enum AssetPopulation {
-  CreatedBy = 'createdBy',
-  UpdatedBy = 'updatedBy',
-}
-export class AssetQueryDto extends QueryPagination {
+export class AssetQueryDto extends QueryCommon {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
   })
@@ -79,12 +75,11 @@ export class AssetQueryDto extends QueryPagination {
   order?: 'asc' | 'desc' = 'desc';
 
   @ApiPropertyOptional({
-    description: 'The field for Population',
-    isArray: true,
-    enum: AssetPopulation,
+    description: 'Include item count summary',
+    example: true,
   })
   @IsOptional()
-  @IsArray()
-  @IsEnum(AssetPopulation, { each: true })
-  populations?: AssetPopulation[];
+  @Type(() => Boolean)
+  @IsBoolean()
+  itemCount?: boolean;
 }

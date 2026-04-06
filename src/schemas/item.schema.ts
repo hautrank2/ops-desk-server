@@ -14,7 +14,7 @@ export enum ItemStatus {
 @Schema({ timestamps: true })
 export class Item {
   @Prop({ required: true })
-  assetId: string;
+  assetId: Types.ObjectId;
 
   @Prop({ required: true, unique: true })
   code: string;

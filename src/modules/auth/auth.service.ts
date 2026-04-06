@@ -35,9 +35,7 @@ export class AuthService {
           return from(bcrypt.compare(password, user.passwordHash)).pipe(
             map((ok: boolean) => {
               if (!ok) {
-                return throwError(
-                  () => new UnauthorizedException('Invalid credentials'),
-                );
+                throw new UnauthorizedException('Invalid credentials');
               }
 
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -45,6 +43,7 @@ export class AuthService {
                 username: user.username,
                 role: user.role,
               };
+
               const token = this.jwtService.sign({
                 username: user.username,
                 role: user.role,

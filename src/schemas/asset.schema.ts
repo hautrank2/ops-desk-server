@@ -38,6 +38,9 @@ export class Asset {
   @Prop({ type: Boolean, default: true })
   active: boolean;
 
+  @Prop()
+  description?: string;
+
   @Prop({
     required: true,
     type: mongoose.Schema.Types.ObjectId,

@@ -159,7 +159,7 @@ export class TicketService {
     );
   }
 
-  findOne(id: number): Observable<Ticket> {
+  findOne(id: string): Observable<Ticket> {
     return from(this.ticketModel.findById(id).lean()).pipe(
       map(res => {
         if (!res) {

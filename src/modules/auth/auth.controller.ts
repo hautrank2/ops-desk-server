@@ -1,6 +1,7 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { SigninDto } from './dto/signin.dto';
 import { AuthService } from './auth.service';
+import { ValidTokenGuard } from 'src/guards/valid-token.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -9,5 +10,13 @@ export class AuthController {
   @Post('signin')
   signin(@Body() dto: SigninDto) {
     return this.authService.signin(dto);
+  }
+
+  @Get('valid-token')
+  @UseGuards(ValidTokenGuard)
+  checkToken() {
+    return {
+      valid: true,
+    };
   }
 }

@@ -34,9 +34,6 @@ export class Item {
   @Prop()
   note?: string;
 
-  @Prop({ type: [String], default: [] })
-  imageUrls: string[];
-
   @Prop({
     required: true,
     type: mongoose.Schema.Types.ObjectId,

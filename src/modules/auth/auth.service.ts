@@ -15,7 +15,7 @@ export class AuthService {
   constructor(
     private userService: UserService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   signin(dto: SigninDto) {
     const { password, username } = dto;
@@ -40,6 +40,7 @@ export class AuthService {
 
               // eslint-disable-next-line @typescript-eslint/no-unused-vars
               const userData = {
+                _id: user._id.toString(),
                 username: user.username,
                 role: user.role,
               };

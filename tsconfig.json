@@ -23,7 +23,7 @@
       "./src/types"
     ],
     "types": [
-      "Multer"
+      "multer"
     ]
   }
 }

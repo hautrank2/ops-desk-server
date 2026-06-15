@@ -32,4 +32,3 @@ test
 coverage
 eslint.config.mjs
 .prettierrc
-tsconfig.build.json

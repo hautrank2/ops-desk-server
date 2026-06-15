@@ -1,10 +1,8 @@
 # Stage 1: Base image
 FROM node:22-alpine AS base
 
-# Configure pnpm
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+# Install pnpm globally (version 9 to match the lockfileVersion: '9.0')
+RUN npm install -g pnpm@9
 
 WORKDIR /app
 

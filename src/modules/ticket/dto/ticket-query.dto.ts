@@ -136,3 +136,15 @@ export class TicketQueryDto extends QueryPagination {
   @IsEnum(TicketPopulationEnum, { each: true })
   populations?: TicketPopulationEnum[];
 }
+
+export class TicketDetailQueryDto extends QueryPagination {
+  @ApiPropertyOptional({
+    description: 'The field for Population',
+    isArray: true,
+    enum: TicketPopulationEnum,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(TicketPopulationEnum, { each: true })
+  populations?: TicketPopulationEnum[];
+}

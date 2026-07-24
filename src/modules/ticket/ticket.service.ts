@@ -10,6 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Ticket } from 'src/schemas/ticket.schema';
 import { Model, QueryFilter, Types } from 'mongoose';
 import {
+  catchError,
   defer,
   forkJoin,
   from,
@@ -17,17 +18,25 @@ import {
   Observable,
   of,
   switchMap,
+  tap,
   throwError,
 } from 'rxjs';
 import { UploadService } from 'src/services/upload.service';
 import { TicketQueryDto } from './dto/ticket-query.dto';
 import { TableResponse } from 'src/types/response';
+import {
+  AddTicketAssetItemDto,
+  RemoveTicketAssetItemDto,
+} from './dto/ticket-item.dto';
+import { AssetItemService } from '../asset-item/asset-item.service';
+import { ItemStatus } from 'src/schemas/item.schema';
 
 @Injectable()
 export class TicketService {
   constructor(
     @InjectModel(Ticket.name) private readonly ticketModel: Model<Ticket>,
     private readonly uploadSrv: UploadService,
+    private readonly assetItemSrv: AssetItemService,
   ) {}
 
   create(dto: CreateTicketDto, userId: string, files?: Express.Multer.File[]) {
@@ -52,7 +61,7 @@ export class TicketService {
           switchMap(imageUrls => {
             return from(
               new this.ticketModel({
-                ...dto,
+                assetItemIds: [],
                 imageUrls,
                 createdBy: new Types.ObjectId(userId),
               }).save(),
@@ -183,6 +192,109 @@ export class TicketService {
           throw new NotFoundException('Asset not found');
         }
         return ticket;
+      }),
+    );
+  }
+
+  getItems(id: string) {
+    return from(this.ticketModel.findById(id)).pipe(
+      switchMap(ticket => {
+        if (!ticket) {
+          return throwError(() => new NotFoundException('Asset not found'));
+        }
+        return from(
+          this.assetItemSrv.findByIds(
+            ticket.assetItemIds.map(e => e.toString()),
+          ),
+        );
+      }),
+    );
+  }
+
+  addItems(id: string, dto: AddTicketAssetItemDto, userId: string) {
+    const invalidId = dto.itemIds.find(
+      itemId => !Types.ObjectId.isValid(itemId),
+    );
+    if (invalidId) {
+      return throwError(
+        () => new BadRequestException(`${invalidId} is not a valid ID`),
+      );
+    }
+
+    return from(this.ticketModel.findById(id)).pipe(
+      switchMap(ticket => {
+        if (!ticket) {
+          return throwError(() => new NotFoundException('Ticket not found'));
+        }
+
+        const updateItems$ = dto.itemIds.map(itemId =>
+          this.assetItemSrv
+            .update(itemId, { status: ItemStatus.Maintenance })
+            .pipe(
+              catchError(() =>
+                throwError(
+                  () =>
+                    new BadRequestException(
+                      `Asset item ${itemId} not found, or an error occurred during the update.`,
+                    ),
+                ),
+              ),
+            ),
+        );
+
+        return (updateItems$.length ? forkJoin(updateItems$) : of([])).pipe(
+          switchMap(() => {
+            ticket.assetItemIds.push(
+              ...dto.itemIds.map(itemId => new Types.ObjectId(itemId)),
+            );
+            ticket.updatedBy = new Types.ObjectId(userId);
+            return from(ticket.save());
+          }),
+        );
+      }),
+    );
+  }
+
+  removeItems(id: string, dto: RemoveTicketAssetItemDto, userId: string) {
+    const invalidId = dto.itemIds.find(
+      itemId => !Types.ObjectId.isValid(itemId),
+    );
+    if (invalidId) {
+      return throwError(
+        () => new BadRequestException(`${invalidId} is not a valid ID`),
+      );
+    }
+
+    return from(this.ticketModel.findById(id)).pipe(
+      switchMap(ticket => {
+        if (!ticket) {
+          return throwError(() => new NotFoundException('Asset not found'));
+        }
+
+        const needRemoveItemIds: string[] = [];
+
+        const newItems = ticket.assetItemIds.filter(itemId => {
+          const itemIdStr = itemId.toString();
+          if (dto.itemIds.includes(itemIdStr)) {
+            needRemoveItemIds.push(itemIdStr);
+            return false;
+          }
+
+          return true;
+        });
+
+        ticket.assetItemIds = newItems;
+        ticket.updatedBy = new Types.ObjectId(userId);
+
+        const removeItems$ = needRemoveItemIds.map(itemId =>
+          this.assetItemSrv.update(itemId, { status: ItemStatus.Active }),
+        );
+
+        return from(ticket.save()).pipe(
+          switchMap(() => {
+            return removeItems$.length > 0 ? forkJoin(removeItems$) : of([]);
+          }),
+        );
       }),
     );
   }

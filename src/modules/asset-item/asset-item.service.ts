@@ -104,6 +104,10 @@ export class AssetItemService {
     );
   }
 
+  findByIds(ids: string[]) {
+    return this.itemModel.find({ _id: { $in: ids } }).lean();
+  }
+
   findOne(id: string, include: string[] = []) {
     return this.validateObjectId(id).pipe(
       switchMap(() => {

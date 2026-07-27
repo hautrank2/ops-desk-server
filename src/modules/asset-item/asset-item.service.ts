@@ -6,9 +6,14 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { from, map, of, switchMap, throwError } from 'rxjs';
-import { AssetItemQueryDto } from './dto/asset-item-query.dto';
+import {
+  AssetItemPopulationEnum,
+  AssetItemQueryDto,
+  AssetItemQueryPopulation,
+} from './dto/asset-item-query.dto';
 import { UpdateAssetItemDto } from './dto/update-asset-item.dto';
 import { Item, ItemDocument } from 'src/schemas/item.schema';
+import { QueryPopulateModel } from 'src/types/query';
 
 @Injectable()
 export class AssetItemService {
@@ -21,7 +26,7 @@ export class AssetItemService {
     const {
       page,
       pageSize,
-      include = [],
+      populations = [],
       code,
       serialNumber,
       locationId,
@@ -57,7 +62,7 @@ export class AssetItemService {
       pageSize !== undefined &&
       pageSize !== null;
 
-    const populates = this.buildPopulate(include);
+    const populates = this.buildPopulate(populations);
 
     if (!hasPagination) {
       let mongooseQuery = this.itemModel.find(filter).sort({ createdAt: -1 });
@@ -104,12 +109,13 @@ export class AssetItemService {
     );
   }
 
-  findOne(id: string, include: string[] = []) {
+  findOne(id: string, query: AssetItemQueryPopulation) {
+    const { populations } = query;
     return this.validateObjectId(id).pipe(
       switchMap(() => {
         let mongooseQuery = this.itemModel.findById(id);
 
-        for (const populate of this.buildPopulate(include)) {
+        for (const populate of this.buildPopulate(populations)) {
           mongooseQuery = mongooseQuery.populate(populate);
         }
 
@@ -166,21 +172,28 @@ export class AssetItemService {
     return of(true);
   }
 
-  private buildPopulate(include: string[] = []) {
+  private buildPopulate(include: AssetItemPopulationEnum[] = []) {
     const includeSet = new Set(include);
-    const populates: any[] = [];
+    const populates: QueryPopulateModel[] = [];
 
-    if (includeSet.has('createdBy')) {
+    if (includeSet.has(AssetItemPopulationEnum.CreatedBy)) {
       populates.push({
         path: 'createdBy',
         select: '_id username email name role status',
       });
     }
 
-    if (includeSet.has('updatedBy')) {
+    if (includeSet.has(AssetItemPopulationEnum.UpdatedBy)) {
       populates.push({
         path: 'updatedBy',
         select: '_id username email name role status',
+      });
+    }
+
+    if (includeSet.has(AssetItemPopulationEnum.AssetId)) {
+      populates.push({
+        path: 'assetId',
+        select: '_id code name type vendor model imageUrls active description',
       });
     }
 

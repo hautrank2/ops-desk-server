@@ -24,7 +24,6 @@ export enum TicketPopulationEnum {
 export class TicketQueryDto extends QueryPagination {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
-    example: 'OPS-000',
   })
   @IsOptional()
   @IsString()
@@ -32,7 +31,6 @@ export class TicketQueryDto extends QueryPagination {
 
   @ApiPropertyOptional({
     description: 'Search by title (partial match)',
-    example: 'camera',
   })
   @IsOptional()
   @IsString()

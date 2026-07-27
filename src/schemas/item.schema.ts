@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { Document, Types } from 'mongoose';
 import { User } from './user.schema';
+import { Asset } from './asset.schema';
 
 export type ItemDocument = Item & Document;
 
@@ -13,7 +14,11 @@ export enum ItemStatus {
 
 @Schema({ timestamps: true })
 export class Item {
-  @Prop({ required: true })
+  @Prop({
+    required: true,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: Asset.name,
+  })
   assetId: Types.ObjectId;
 
   @Prop({ required: true, unique: true })

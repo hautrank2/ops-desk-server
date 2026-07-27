@@ -1,7 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
 import { ItemStatus } from 'src/schemas/item.schema';
 import { QueryCommon } from 'src/types/query';
+
+export enum AssetItemPopulationEnum {
+  AssetId = 'assetId',
+  UpdatedBy = 'updatedBy',
+  CreatedBy = 'createdBy',
+}
 
 export class AssetItemQueryDto extends QueryCommon {
   @ApiPropertyOptional({
@@ -36,4 +43,32 @@ export class AssetItemQueryDto extends QueryCommon {
   @IsOptional()
   @IsString()
   status?: ItemStatus;
+
+  @ApiPropertyOptional({
+    description: 'The field for Population',
+    isArray: true,
+    enum: AssetItemPopulationEnum,
+  })
+  @Transform(({ value }) => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value as AssetItemPopulationEnum[];
+    if (typeof value === 'string') return value.split(',').map(v => v.trim());
+    return [];
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(AssetItemPopulationEnum, { each: true })
+  populations?: AssetItemPopulationEnum[];
+}
+
+export class AssetItemQueryPopulation {
+  @ApiPropertyOptional({
+    description: 'The field for Population',
+    isArray: true,
+    enum: AssetItemPopulationEnum,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsEnum(AssetItemPopulationEnum, { each: true })
+  populations?: AssetItemPopulationEnum[];
 }

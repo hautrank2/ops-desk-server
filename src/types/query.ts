@@ -27,7 +27,7 @@ export class QueryInclude {
   @IsOptional()
   @Transform(({ value }) => {
     if (!value) return [];
-    if (Array.isArray(value)) return value;
+    if (Array.isArray(value)) return value as string[];
     if (typeof value === 'string') return value.split(',').map(v => v.trim());
     return [];
   })
@@ -40,3 +40,8 @@ export class QueryCommon extends IntersectionType(
   QueryPagination,
   QueryInclude,
 ) {}
+
+export type QueryPopulateModel = {
+  path: string;
+  select: string;
+};

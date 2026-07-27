@@ -21,7 +21,11 @@ import {
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { ApiBody, ApiConsumes } from '@nestjs/swagger';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { TicketQueryDto } from './dto/ticket-query.dto';
+import { TicketDetailQueryDto, TicketQueryDto } from './dto/ticket-query.dto';
+import {
+  AddTicketAssetItemDto,
+  RemoveTicketAssetItemDto,
+} from './dto/ticket-item.dto';
 
 @Controller('ticket')
 export class TicketController {
@@ -55,7 +59,7 @@ export class TicketController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string, @Query() query: TicketDetailQueryDto) {
     return this.ticketService.findOne(id);
   }
 
@@ -73,6 +77,50 @@ export class TicketController {
       updateTicketDto,
       request.payload.userId,
     );
+  }
+
+  @ApiBody({
+    description: 'Ticket items',
+    type: TicketImageFormDataDto,
+  })
+  @Get(':id/items')
+  getItems(@Param('id') id: string, @Req() request: Request) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.ticketService.getItems(id);
+  }
+
+  @ApiBody({
+    description: 'Ticket items',
+    type: TicketImageFormDataDto,
+  })
+  @Post(':id/items')
+  addItems(
+    @Param('id') id: string,
+    @Body() dto: AddTicketAssetItemDto,
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.ticketService.addItems(id, dto, request.payload.userId);
+  }
+
+  @ApiBody({
+    description: 'Ticket items',
+    type: TicketImageFormDataDto,
+  })
+  @Post(':id/remove-items')
+  removeItems(
+    @Param('id') id: string,
+    @Body() dto: RemoveTicketAssetItemDto,
+    @Req() request: Request,
+  ) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.ticketService.removeItems(id, dto, request.payload.userId);
   }
 
   @ApiConsumes('multipart/form-data')

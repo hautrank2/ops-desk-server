@@ -1,0 +1,34 @@
+# Dependencies and build outputs
+node_modules
+dist
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# IDEs, editors and OS metadata
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Configuration and docs
+.env
+.env.template
+.git
+.gitignore
+.claude
+.kiro
+README.md
+Dockerfile
+docker-compose.yml
+
+# Testing and linting
+test
+coverage
+eslint.config.mjs
+.prettierrc

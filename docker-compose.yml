@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  ops-desk-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ops-desk-server
+    ports:
+      # Map the host port from your .env (default 3003) to the container port 3003
+      - "${PORT:-3003}:3003"
+    # Automatically load all environment variables from the .env file
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      # Ensure the app inside the container binds to port 3003
+      - PORT=3003
+    restart: always

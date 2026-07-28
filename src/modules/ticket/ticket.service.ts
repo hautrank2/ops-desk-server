@@ -59,12 +59,35 @@ export class TicketService {
 
         return upload$.pipe(
           switchMap(imageUrls => {
+            const { assetItems, ...rest } = dto;
             return from(
               new this.ticketModel({
-                assetItemIds: [],
+                ...rest,
+                assetItemIds: assetItems.map(id => new Types.ObjectId(id)),
                 imageUrls,
                 createdBy: new Types.ObjectId(userId),
               }).save(),
+            ).pipe(
+              switchMap(ticket => {
+                const updateItems$ = assetItems.map(itemId =>
+                  this.assetItemSrv
+                    .update(itemId, { status: ItemStatus.Maintenance })
+                    .pipe(
+                      catchError(() =>
+                        throwError(
+                          () =>
+                            new BadRequestException(
+                              `Asset item ${itemId} not found, or an error occurred during the update.`,
+                            ),
+                        ),
+                      ),
+                    ),
+                );
+
+                return (
+                  updateItems$.length ? forkJoin(updateItems$) : of([])
+                ).pipe(map(() => ticket));
+              }),
             );
           }),
         );

@@ -35,6 +35,17 @@ export class CreateTicketDto {
   @IsEnum(TicketType)
   type: TicketType;
 
+  @ApiProperty({
+    type: [String],
+    example: ['65f0c1b0c2a3d4e5f6789012'],
+    description: 'Danh sách ID asset item',
+  })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsMongoId({ each: true })
+  assetItems: string[];
+
   @ApiPropertyOptional({ enum: TicketPriority, default: TicketPriority.Medium })
   @IsOptional()
   @IsEnum(TicketPriority)

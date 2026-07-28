@@ -133,6 +133,19 @@ export class AssetItemService {
     );
   }
 
+  findByIds(ids: string[]) {
+    const objectIds = ids
+      .filter(id => Types.ObjectId.isValid(id))
+      .map(id => new Types.ObjectId(id));
+
+    return from(
+      this.itemModel
+        .find({ _id: { $in: objectIds } })
+        .lean()
+        .exec(),
+    );
+  }
+
   update(id: string, updateAssetItemDto: UpdateAssetItemDto) {
     return this.validateObjectId(id).pipe(
       switchMap(() =>

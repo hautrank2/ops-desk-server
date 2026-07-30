@@ -16,10 +16,6 @@ import {
 } from 'src/schemas/ticket.schema';
 
 export class CreateTicketDto {
-  @ApiProperty({ example: 'OPS-000456' })
-  @IsString()
-  code: string;
-
   @ApiProperty({ example: 'Camera cổng A mất tín hiệu' })
   @IsString()
   title: string;

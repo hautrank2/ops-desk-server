@@ -7,7 +7,7 @@ import {
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { InjectModel } from '@nestjs/mongoose';
-import { Ticket } from 'src/schemas/ticket.schema';
+import { Ticket, TicketDocument } from 'src/schemas/ticket.schema';
 import { Model, QueryFilter, Types } from 'mongoose';
 import {
   catchError,
@@ -18,7 +18,6 @@ import {
   Observable,
   of,
   switchMap,
-  tap,
   throwError,
 } from 'rxjs';
 import { UploadService } from 'src/services/upload.service';
@@ -40,59 +39,91 @@ export class TicketService {
   ) {}
 
   create(dto: CreateTicketDto, userId: string, files?: Express.Multer.File[]) {
-    return from(this.ticketModel.findOne({ code: dto.code })).pipe(
-      switchMap(existed => {
-        if (existed) {
-          return throwError(
-            () => new ConflictException('Ticket code already exists'),
-          );
-        }
+    const { assetItems, ...rest } = dto;
 
-        const upload$ =
-          files && files.length > 0
-            ? forkJoin(
-                files.map(file =>
-                  defer(() => this.uploadSrv.uploadFile(file, ['ticket'])),
-                ),
-              )
-            : of([]);
+    const upload$ =
+      files && files.length > 0
+        ? forkJoin(
+            files.map(file =>
+              defer(() => this.uploadSrv.uploadFile(file, ['ticket'])),
+            ),
+          )
+        : of([]);
 
-        return upload$.pipe(
-          switchMap(imageUrls => {
-            const { assetItems, ...rest } = dto;
-            return from(
-              new this.ticketModel({
-                ...rest,
-                assetItemIds: assetItems.map(id => new Types.ObjectId(id)),
-                imageUrls,
-                createdBy: new Types.ObjectId(userId),
-              }).save(),
-            ).pipe(
-              switchMap(ticket => {
-                const updateItems$ = assetItems.map(itemId =>
-                  this.assetItemSrv
-                    .update(itemId, { status: ItemStatus.Maintenance })
-                    .pipe(
-                      catchError(() =>
-                        throwError(
-                          () =>
-                            new BadRequestException(
-                              `Asset item ${itemId} not found, or an error occurred during the update.`,
-                            ),
+    return upload$.pipe(
+      switchMap(imageUrls =>
+        // Code is auto-generated; createTicketDocument retries on the rare
+        // unique-code race so we never surface a duplicate-key error.
+        from(
+          this.createTicketDocument({
+            ...rest,
+            assetItemIds: assetItems.map(id => new Types.ObjectId(id)),
+            imageUrls,
+            createdBy: new Types.ObjectId(userId),
+          }),
+        ).pipe(
+          switchMap(ticket => {
+            const updateItems$ = assetItems.map(itemId =>
+              this.assetItemSrv
+                .update(itemId, { status: ItemStatus.Maintenance })
+                .pipe(
+                  catchError(() =>
+                    throwError(
+                      () =>
+                        new BadRequestException(
+                          `Asset item ${itemId} not found, or an error occurred during the update.`,
                         ),
-                      ),
                     ),
-                );
+                  ),
+                ),
+            );
 
-                return (
-                  updateItems$.length ? forkJoin(updateItems$) : of([])
-                ).pipe(map(() => ticket));
-              }),
+            return (updateItems$.length ? forkJoin(updateItems$) : of([])).pipe(
+              map(() => ticket),
             );
           }),
-        );
-      }),
+        ),
+      ),
     );
+  }
+
+  /**
+   * Build the next ticket code, e.g. OPS-000123. Codes are zero-padded to a
+   * fixed width so lexicographic sort matches numeric order.
+   */
+  private async generateTicketCode(): Promise<string> {
+    const PREFIX = 'OPS-';
+    const WIDTH = 6;
+
+    const last = await this.ticketModel
+      .findOne({ code: { $regex: `^${PREFIX}\\d+$` } })
+      .sort({ code: -1 })
+      .select('code')
+      .lean();
+
+    let next = 1;
+    if (last?.code) {
+      const parsed = parseInt(last.code.slice(PREFIX.length), 10);
+      if (!Number.isNaN(parsed)) next = parsed + 1;
+    }
+
+    return `${PREFIX}${String(next).padStart(WIDTH, '0')}`;
+  }
+
+  private async createTicketDocument(
+    data: Record<string, unknown>,
+  ): Promise<TicketDocument> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = await this.generateTicketCode();
+      try {
+        return await new this.ticketModel({ ...data, code }).save();
+      } catch (err: any) {
+        // Duplicate code (concurrent create) → regenerate and retry.
+        if (err?.code === 11000 && attempt < 4) continue;
+        throw err;
+      }
+    }
+    throw new ConflictException('Unable to generate a unique ticket code');
   }
 
   findAll(filters: TicketQueryDto): Observable<TableResponse<Ticket>> {

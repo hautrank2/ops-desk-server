@@ -25,7 +25,9 @@ import { TicketDetailQueryDto, TicketQueryDto } from './dto/ticket-query.dto';
 import {
   AddTicketAssetItemDto,
   RemoveTicketAssetItemDto,
+  TicketAssetItemQueryDto,
 } from './dto/ticket-item.dto';
+import { AssetItemQueryDto } from '../asset-item/dto/asset-item-query.dto';
 
 @Controller('ticket')
 export class TicketController {
@@ -59,7 +61,7 @@ export class TicketController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Query() query: TicketDetailQueryDto) {
+  findOne(@Param('id') id: string, @Query() query: TicketAssetItemQueryDto) {
     return this.ticketService.findOne(id);
   }
 
@@ -79,16 +81,16 @@ export class TicketController {
     );
   }
 
-  @ApiBody({
-    description: 'Ticket items',
-    type: TicketImageFormDataDto,
-  })
   @Get(':id/items')
-  getItems(@Param('id') id: string, @Req() request: Request) {
+  getItems(
+    @Param('id') id: string,
+    @Query() query: TicketAssetItemQueryDto,
+    @Req() request: Request,
+  ) {
     if (!request.payload) {
       throw new ForbiddenException('Invalid Authorization');
     }
-    return this.ticketService.getItems(id);
+    return this.ticketService.getItems(id, query);
   }
 
   @ApiBody({

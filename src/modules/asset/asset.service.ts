@@ -95,7 +95,7 @@ export class AssetService {
       pageSize,
       sortBy = 'createdAt',
       order = 'desc',
-      include = [],
+      populations: populationsFilter = [],
       itemCount = false,
     } = filters;
 
@@ -123,7 +123,7 @@ export class AssetService {
       1 | -1
     >;
 
-    const populations = this.buildPopulate(include);
+    const populations = this.buildPopulate(populationsFilter);
 
     const hasPagination =
       page !== undefined &&

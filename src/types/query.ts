@@ -1,6 +1,7 @@
 import { ApiPropertyOptional, IntersectionType } from '@nestjs/swagger';
-import { Transform, Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { ToStringArrayQuery } from 'src/utils/transform';
 
 export class QueryPagination {
   // pagination
@@ -19,21 +20,21 @@ export class QueryPagination {
   pageSize?: number = 20;
 }
 
+/**
+ * Base "populations" field. Each module DTO extends {@link QueryCommon} and
+ * re-declares `populations` narrowed to its own PopulationEnum via
+ * `@IsEnum(SomeEnum, { each: true })` — inheriting this array/transform shape.
+ */
 export class QueryInclude {
   @ApiPropertyOptional({
     type: [String],
     example: ['createdBy', 'updatedBy'],
   })
   @IsOptional()
-  @Transform(({ value }) => {
-    if (!value) return [];
-    if (Array.isArray(value)) return value as string[];
-    if (typeof value === 'string') return value.split(',').map(v => v.trim());
-    return [];
-  })
+  @ToStringArrayQuery()
   @IsArray()
   @IsString({ each: true })
-  include?: string[];
+  populations?: string[];
 }
 
 export class QueryCommon extends IntersectionType(

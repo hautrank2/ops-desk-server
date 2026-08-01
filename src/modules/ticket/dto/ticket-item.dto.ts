@@ -1,4 +1,5 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, OmitType, PartialType } from '@nestjs/swagger';
+import { AssetItemQueryDto } from 'src/modules/asset-item/dto/asset-item-query.dto';
 
 export class AddTicketAssetItemDto {
   @ApiProperty({
@@ -17,3 +18,7 @@ export class RemoveTicketAssetItemDto {
   })
   itemIds: string[];
 }
+
+export class TicketAssetItemQueryDto extends PartialType(
+  OmitType(AssetItemQueryDto, ['page', 'pageSize'] as const),
+) {}

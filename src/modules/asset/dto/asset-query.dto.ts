@@ -9,6 +9,8 @@ import {
 import { AssetType } from 'src/schemas/asset.schema';
 import { QueryCommon } from 'src/types/query';
 
+// Asset only populates user refs; it consumes the generic `populations`
+// (string[]) inherited from QueryCommon — see QueryInclude in src/types/query.
 export class AssetQueryDto extends QueryCommon {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',

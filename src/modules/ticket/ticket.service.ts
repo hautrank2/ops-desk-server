@@ -26,6 +26,7 @@ import { TableResponse } from 'src/types/response';
 import {
   AddTicketAssetItemDto,
   RemoveTicketAssetItemDto,
+  TicketAssetItemQueryDto,
 } from './dto/ticket-item.dto';
 import { AssetItemService } from '../asset-item/asset-item.service';
 import { ItemStatus } from 'src/schemas/item.schema';
@@ -203,7 +204,7 @@ export class TicketService {
       .skip(skip)
       .limit(safePageSize);
 
-    if (populations) {
+    if (populations?.length) {
       query = query.populate(populations);
     }
 
@@ -250,15 +251,16 @@ export class TicketService {
     );
   }
 
-  getItems(id: string) {
+  getItems(id: string, query: TicketAssetItemQueryDto) {
     return from(this.ticketModel.findById(id)).pipe(
       switchMap(ticket => {
         if (!ticket) {
-          return throwError(() => new NotFoundException('Asset not found'));
+          return throwError(() => new NotFoundException('Ticket not found'));
         }
         return from(
           this.assetItemSrv.findByIds(
             ticket.assetItemIds.map(e => e.toString()),
+            query?.populations,
           ),
         );
       }),

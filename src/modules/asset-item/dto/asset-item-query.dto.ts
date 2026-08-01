@@ -1,8 +1,8 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Transform } from 'class-transformer';
 import { IsArray, IsEnum, IsOptional, IsString } from 'class-validator';
 import { ItemStatus } from 'src/schemas/item.schema';
-import { QueryCommon } from 'src/types/query';
+import { QueryPagination } from 'src/types/query';
+import { ToStringArrayQuery } from 'src/utils/transform';
 
 export enum AssetItemPopulationEnum {
   AssetId = 'assetId',
@@ -10,7 +10,8 @@ export enum AssetItemPopulationEnum {
   CreatedBy = 'createdBy',
 }
 
-export class AssetItemQueryDto extends QueryCommon {
+// Narrows the base `populations` (QueryInclude) to this module's enum.
+export class AssetItemQueryDto extends QueryPagination {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
   })
@@ -49,13 +50,8 @@ export class AssetItemQueryDto extends QueryCommon {
     isArray: true,
     enum: AssetItemPopulationEnum,
   })
-  @Transform(({ value }) => {
-    if (!value) return [];
-    if (Array.isArray(value)) return value as AssetItemPopulationEnum[];
-    if (typeof value === 'string') return value.split(',').map(v => v.trim());
-    return [];
-  })
   @IsOptional()
+  @ToStringArrayQuery()
   @IsArray()
   @IsEnum(AssetItemPopulationEnum, { each: true })
   populations?: AssetItemPopulationEnum[];
@@ -68,6 +64,7 @@ export class AssetItemQueryPopulation {
     enum: AssetItemPopulationEnum,
   })
   @IsOptional()
+  @ToStringArrayQuery()
   @IsArray()
   @IsEnum(AssetItemPopulationEnum, { each: true })
   populations?: AssetItemPopulationEnum[];

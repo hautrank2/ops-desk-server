@@ -13,7 +13,7 @@ import {
   TicketType,
 } from 'src/schemas/ticket.schema';
 import { QueryPagination } from 'src/types/query';
-import { ToArrayQuery } from 'src/utils/transform';
+import { ToArrayQuery, ToStringArrayQuery } from 'src/utils/transform';
 
 export enum TicketPopulationEnum {
   CreatedBy = 'createdBy',
@@ -21,6 +21,7 @@ export enum TicketPopulationEnum {
   assetItemId = 'assetItemId',
 }
 
+// Narrows the base `populations` (QueryInclude) to this module's enum.
 export class TicketQueryDto extends QueryPagination {
   @ApiPropertyOptional({
     description: 'Search by code (partial match)',
@@ -130,6 +131,7 @@ export class TicketQueryDto extends QueryPagination {
     enum: TicketPopulationEnum,
   })
   @IsOptional()
+  @ToStringArrayQuery()
   @IsArray()
   @IsEnum(TicketPopulationEnum, { each: true })
   populations?: TicketPopulationEnum[];
@@ -142,6 +144,7 @@ export class TicketDetailQueryDto extends QueryPagination {
     enum: TicketPopulationEnum,
   })
   @IsOptional()
+  @ToStringArrayQuery()
   @IsArray()
   @IsEnum(TicketPopulationEnum, { each: true })
   populations?: TicketPopulationEnum[];

@@ -133,17 +133,18 @@ export class AssetItemService {
     );
   }
 
-  findByIds(ids: string[]) {
+  findByIds(ids: string[], populations: AssetItemPopulationEnum[] = []) {
     const objectIds = ids
       .filter(id => Types.ObjectId.isValid(id))
       .map(id => new Types.ObjectId(id));
 
-    return from(
-      this.itemModel
-        .find({ _id: { $in: objectIds } })
-        .lean()
-        .exec(),
-    );
+    let mongooseQuery = this.itemModel.find({ _id: { $in: objectIds } });
+
+    for (const populate of this.buildPopulate(populations)) {
+      mongooseQuery = mongooseQuery.populate(populate);
+    }
+
+    return from(mongooseQuery.lean().exec());
   }
 
   update(id: string, updateAssetItemDto: UpdateAssetItemDto) {

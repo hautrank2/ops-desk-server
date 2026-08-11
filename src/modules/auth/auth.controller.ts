@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { SigninDto } from './dto/signin.dto';
 import { AuthService } from './auth.service';
 import { ValidTokenGuard } from 'src/guards/valid-token.guard';
@@ -18,5 +26,14 @@ export class AuthController {
     return {
       valid: true,
     };
+  }
+
+  @Get('me')
+  @UseGuards(ValidTokenGuard)
+  me(@Req() request: Request) {
+    if (!request.payload) {
+      throw new ForbiddenException('Invalid Authorization');
+    }
+    return this.authService.me(request.payload.userId);
   }
 }

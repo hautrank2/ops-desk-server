@@ -17,6 +17,17 @@ export class AuthService {
     private jwtService: JwtService,
   ) { }
 
+  me(userId: string) {
+    return this.userService.findOne(userId).pipe(
+      map(user => {
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
+        return user;
+      }),
+    );
+  }
+
   signin(dto: SigninDto) {
     const { password, username } = dto;
 
